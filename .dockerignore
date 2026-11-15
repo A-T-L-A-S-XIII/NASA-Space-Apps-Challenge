@@ -1,7 +1,12 @@
-# Só backend/, data/ e pipeline/ entram na imagem
+# Só backend/, data/, pipeline/ e as passagens de Fotos/nisar_taquari_50 entram na imagem
 .git
-Fotos
+# A API lê de Fotos/ só catalogo.json e as pastas img_*; o resto não precisa ir
+Fotos/nisar_taquari_50/animacao.gif
+Fotos/nisar_taquari_50/mosaico_50.png
+Fotos/nisar_taquari_50/serie_temporal.png
+Fotos/nisar_taquari_50/catalogo.csv
 frontend
+frontend-legado
 docs
 **/node_modules
 **/__pycache__

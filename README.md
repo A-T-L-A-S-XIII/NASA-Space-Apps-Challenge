@@ -2,7 +2,7 @@
 
 NASA Space Apps 2026 · Challenge "Dancing with the SARs" · Local Event: Goiânia
 
-> **Work in progress.** The map still runs on test data (marked "DEV FIXTURE"; test towns are synthetic). No NISAR result is shown yet.
+> **Prototype.** The Taquari Valley screens show the 19 processed NISAR passes; the globe and the region drill-down use simulated values, labelled "simulado" on screen.
 > Candidate water-change indicator — not a validated flood map. Not for evacuation or route decisions.
 
 ## The idea
@@ -20,12 +20,20 @@ It only shows what the radar observed. It is not a forecast.
 ## How it works
 
 ```
-pipeline/  Python scripts, run once on our computers → data/demo/ (images + numbers)
-backend/   FastAPI: serves the files in data/demo/ (no live processing)
-frontend/  Next.js: map, timeline, "Is my area affected?"
+Browser ──► Next.js (frontend/, Vercel) ──► FastAPI (backend/, Render)
+            serves the static mockup         NISAR passes (Fotos/nisar_taquari_50),
+            /api/auth/* login bridge         ASF scenes, NOAA ONI, Open-Meteo forecast,
+            rewrites the other /api/*        IBGE municipalities, demo account (SQLite)
 ```
 
-For the public demo, `backend/export_static.py` saves the API answers as JSON files, so the site runs on Vercel without a server.
+- The browser only talks to Next.js and only sees relative `/api/...` paths.
+- Next.js keeps the login token in an httpOnly cookie (`ww_token`) and adds it as `Authorization` when it
+  forwards `/api/*` to FastAPI (`frontend/middleware.js`, `frontend/lib/auth.mjs`). The FastAPI address is the
+  server-side variable `API_URL`.
+- If FastAPI is unreachable, the demo e-mail can still log in to an offline session and the Taquari Valley
+  screens read saved copies in `frontend/public/data/fallback/`.
+- `pipeline/` and `backend/scripts/` are Python scripts run beforehand on our computers; the API does no
+  radar processing.
 
 ## NASA data used
 
@@ -39,29 +47,62 @@ NISAR L2 GCOV, the only source of candidate water. A search of NASA's catalogue 
 
 ## How to run
 
+First time only: copy the config templates, then set `DEMO_USER_PASSWORD` and `JWT_SECRET` in `backend/.env`
+(the demo account password is whatever you put there; never commit it).
+
 ```bash
-# test data
-python pipeline/make_dev_fixtures.py
-python backend/export_static.py --data-dir data/fixtures --allow-fixtures
-cd frontend && npm install && npm run dev        # http://localhost:3000
-
-# tests
-cd backend && python -m pytest
-
-# API server (optional)
-TFW_DATA_DIR=data/fixtures uvicorn app.main:app --app-dir backend --reload
+cp backend/.env.example backend/.env && cp frontend/.env.example frontend/.env.local
 ```
 
-Before publishing, `python pipeline/validate_demo.py` must pass: it refuses test data.
+```bash
+cd backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
 
-### Deploy the frontend (Vercel)
+Then run each service in its own terminal.
 
-1. `python backend/export_static.py` (real data in `data/demo/`), then commit `frontend/public/api/`.
-2. On vercel.com: **Add New → Project**, import this repository, set **Root Directory** to `frontend`. The framework is detected as Next.js; `next.config.mjs` already sets a static export.
-3. Environment variables: `NEXT_PUBLIC_API_BASE` = the public API URL (leave empty to use the static files only).
-4. Deploy, then open the link in a private window.
+**Terminal 1, FastAPI** (from `backend/`, because `.env` is read from the current folder; on Windows use
+`.venv\Scripts\python`):
 
-Where the API itself runs is still open: the accounts use a SQLite file, which serverless hosting does not keep.
+```bash
+cd backend && .venv/bin/python -m uvicorn app.main:app --port 8000
+```
+
+**Terminal 2, Next.js:**
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+Open http://localhost:3000 and log in with `DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD` from `backend/.env`.
+
+Without internet, start FastAPI with `OFFLINE_MODE=true`: ASF and NOAA answers come from
+`backend/app/data/snapshots/` (refresh them with `python scripts/snapshot.py` from `backend/`).
+
+Tests: `cd backend && python -m pytest` and `cd frontend && npm test`.
+
+### Deploy
+
+**FastAPI on Render** (free plan; the image is the root `Dockerfile`, which includes `Fotos/nisar_taquari_50`):
+
+1. On render.com: **New → Blueprint**, pick this repository. `render.yaml` creates the `water-waltz-api` web
+   service; Render generates `JWT_SECRET` and `SEED_GOV_PASSWORD`.
+2. When asked, fill in `DEMO_USER_PASSWORD` (keep it out of the repository) and `CORS_ORIGINS` (the Vercel
+   URL, e.g. `https://water-waltz.vercel.app`).
+3. After the deploy, `https://<service>.onrender.com/health` must answer `{"status":"ok"}`. The demo account is
+   created again on every startup from `DEMO_USER_*`.
+
+The free service sleeps after 15 minutes without traffic and takes about a minute to wake up. Railway also
+works: **New Project → Deploy from GitHub repo** finds the `Dockerfile`; set the same variables and
+**Generate Domain** under Networking.
+
+**Next.js on Vercel:**
+
+1. **Add New → Project**, import this repository, **Root Directory** `frontend`. Framework: Next.js.
+2. Environment variables (no `NEXT_PUBLIC_` prefix, they stay on the server): `API_URL` = the Render URL,
+   `DEMO_EMAIL` = the same e-mail as `DEMO_USER_EMAIL`, `JWT_EXPIRE_MINUTES=1440`.
+3. Deploy. `API_URL` is read at build time by the rewrites in `next.config.js`: after changing it, redeploy.
+
+Before the pitch, see [docs/checklist-pitch.md](docs/checklist-pitch.md).
 
 ## Method and limits
 
