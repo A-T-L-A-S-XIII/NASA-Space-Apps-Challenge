@@ -15,6 +15,8 @@ In recent floods in the Taquari Valley (RS, Brazil), many people were affected w
 
 It only shows what the radar observed. It is not a forecast.
 
+**NISAR detects the water; OpenStreetMap roads and IBGE localities provide context.**
+
 ## How it works
 
 ```
@@ -25,11 +27,15 @@ frontend/  Next.js: map, timeline, "Is my area affected?"
 
 For the public demo, `backend/export_static.py` saves the API answers as JSON files, so the site runs on Vercel without a server.
 
-## NASA data
+## NASA data used
 
-NISAR L2 GCOV. A search of NASA's catalogue (`pipeline/query.py`, result in `data/nisar_granules.json`) found 21 images since June 2026 covering our area, on two orbits that repeat every 12 days. The images actually used will be listed in [docs/DATA.md](docs/DATA.md).
+NISAR L2 GCOV, the only source of candidate water. A search of NASA's catalogue (`pipeline/query.py`, result in `data/nisar_granules.json`) found 21 images since June 2026 covering our area, on two orbits that repeat every 12 days. The granules used are listed in [docs/DATA.md](docs/DATA.md).
 
-Sentinel-1 is planned only to add more dates, shown separately.
+## Other data (context only)
+
+- **Basemap:** tiles © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), used under the OpenStreetMap tile usage policy (attribution always visible, no stored or offline tiles).
+- **Roads:** OpenStreetMap main roads (motorway to tertiary) inside the study area, extracted with `pipeline/fetch_roads.py` (OSM data timestamp in `data/roads/osm_roads.geojson`). Road data © OpenStreetMap contributors, available under the [Open Database License (ODbL)](https://www.openstreetmap.org/copyright). The road file is derived from OSM and is under the ODbL, not under the MIT licence of the code.
+- **Localities:** IBGE municipal seats and localities *[to add; product, version and licence to verify]*.
 
 ## How to run
 

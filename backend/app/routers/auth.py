@@ -6,7 +6,7 @@ from app.schemas import LoginRequest, TokenResponse, UserCreate, UserOut
 from app.security import create_access_token, get_current_user, require_gov, verify_password
 from app.services.users import create_user, get_user_by_email
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["Autenticação"])
 
 
 def _check_email_free(db: Session, email: str):
@@ -14,14 +14,15 @@ def _check_email_free(db: Session, email: str):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-mail já cadastrado")
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED,
+             summary="Cadastro público (sempre cidadão)")
 def register(data: UserCreate, db: Session = Depends(get_db)):
     _check_email_free(db, data.email)
     # Cadastro público SEMPRE cria cidadão, mesmo que o body mande outra role
     return create_user(db, data.name, data.email, data.password, role="cidadao", city=data.city)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, summary="Login: devolve o token JWT")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     user = get_user_by_email(db, data.email)
     if user is None or not verify_password(data.password, user.password_hash):
@@ -29,12 +30,13 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     return TokenResponse(access_token=create_access_token(user), user=UserOut.model_validate(user))
 
 
-@router.get("/me", response_model=UserOut)
+@router.get("/me", response_model=UserOut, summary="Usuário logado")
 def me(user: User = Depends(get_current_user)):
     return user
 
 
-@router.post("/gov-users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@router.post("/gov-users", response_model=UserOut, status_code=status.HTTP_201_CREATED,
+             summary="Cria usuário governo (só governo)")
 def create_gov_user(data: UserCreate, db: Session = Depends(get_db), _: User = Depends(require_gov)):
     _check_email_free(db, data.email)
     return create_user(db, data.name, data.email, data.password, role="governo", city=data.city)

@@ -1,0 +1,4 @@
+# Só para scripts/process_sentinel1.py (não entram na imagem da API).
+# Versions tested on 2026-11-15.
+earthengine-api==1.7.52
+rasterio==1.5.2

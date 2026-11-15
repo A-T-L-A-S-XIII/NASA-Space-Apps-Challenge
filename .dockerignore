@@ -1,0 +1,14 @@
+# Só backend/, data/ e pipeline/ entram na imagem
+.git
+Fotos
+frontend
+docs
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.venv
+**/*.db
+**/.env
+data/raw
+data/fixtures
+backend/tests/_sem_snapshots

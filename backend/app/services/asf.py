@@ -1,8 +1,10 @@
 """Busca de cenas NISAR no catálogo público do ASF DAAC.
 
 A busca não exige login Earthdata (só o download dos arquivos exige).
-Se o ASF falhar ou não houver internet, devolvemos live=False, lista vazia
+Se o ASF falhar ou não houver internet, usamos o snapshot salvo por
+scripts/snapshot.py (live=False e "snapshot_date"); sem snapshot, lista vazia
 e o campo "error" — a API nunca quebra por causa disso.
+Com OFFLINE_MODE=true, o ASF nem é chamado: só o snapshot.
 """
 
 import time
@@ -10,6 +12,7 @@ import time
 import httpx
 
 from app.config import settings
+from app.services import snapshots
 
 # Cache em memória: chave da busca -> (expira_em, resultado)
 _cache: dict[tuple, tuple[float, dict]] = {}
@@ -93,9 +96,9 @@ def parse_scene(feature: dict) -> dict | None:
     }
 
 
-async def search_scenes(wkt: str, product: str = "GCOV", start: str | None = None,
-                        end: str | None = None, limit: int = 25) -> dict:
-    """Busca cenas NISAR que cruzam o polígono WKT, da mais recente para a mais antiga."""
+def search_params(wkt: str, product: str = "GCOV", start: str | None = None,
+                  end: str | None = None, limit: int = 25) -> dict:
+    """Parâmetros da busca no ASF (usados também por scripts/snapshot.py)."""
     params = {
         "dataset": "NISAR",
         "processingLevel": product,
@@ -107,6 +110,38 @@ async def search_scenes(wkt: str, product: str = "GCOV", start: str | None = Non
         params["start"] = start
     if end:
         params["end"] = end
+    return params
+
+
+def from_snapshot(params: dict, error: str | None) -> dict:
+    """Mesma busca, mas filtrando as cenas salvas no snapshot (mesmo polígono e produto)."""
+    snap = snapshots.load(snapshots.ASF_FILE)
+    entry = None
+    for item in (snap or {}).get("searches", []):
+        if item.get("wkt") == params["intersectsWith"] and item.get("product") == params["processingLevel"]:
+            entry = item
+    if entry is None:
+        if error is None:
+            error = "Modo offline: não há snapshot do ASF para esta busca"
+        return {"live": False, "query": params, "scenes": [], "error": error, "snapshot_date": None}
+
+    scenes = [s for s in (parse_scene(f) for f in entry.get("features") or []) if s is not None]
+    # Datas ISO em texto podem ser comparadas direto ("2026-06-17T09:00Z" >= "2026-06-01")
+    if params.get("start"):
+        scenes = [s for s in scenes if (s["start_time"] or "") >= params["start"]]
+    if params.get("end"):
+        scenes = [s for s in scenes if (s["start_time"] or "") <= params["end"]]
+    scenes.sort(key=lambda s: s["start_time"] or "", reverse=True)
+    return {"live": False, "query": params, "scenes": scenes[:params["maxResults"]], "error": error,
+            "snapshot_date": snap.get("snapshot_date")}
+
+
+async def search_scenes(wkt: str, product: str = "GCOV", start: str | None = None,
+                        end: str | None = None, limit: int = 25) -> dict:
+    """Busca cenas NISAR que cruzam o polígono WKT, da mais recente para a mais antiga."""
+    params = search_params(wkt, product, start, end, limit)
+    if settings.offline_mode:
+        return from_snapshot(params, None)
 
     key = tuple(sorted(params.items()))
     cached = _cache.get(key)
@@ -120,11 +155,11 @@ async def search_scenes(wkt: str, product: str = "GCOV", start: str | None = Non
             data = response.json()
         features = data.get("features") or []
     except (httpx.HTTPError, ValueError, AttributeError) as exc:
-        return {"live": False, "query": params, "scenes": [], "error": f"Falha ao consultar o ASF: {exc}"}
+        return from_snapshot(params, f"Falha ao consultar o ASF: {exc}")
 
     scenes = [s for s in (parse_scene(f) for f in features) if s is not None]
     scenes.sort(key=lambda s: s["start_time"] or "", reverse=True)
-    result = {"live": True, "query": params, "scenes": scenes, "error": None}
+    result = {"live": True, "query": params, "scenes": scenes, "error": None, "snapshot_date": None}
 
     # Só guarda no cache buscas que deram certo
     _cache[key] = (time.monotonic() + settings.asf_cache_ttl_seconds, result)
