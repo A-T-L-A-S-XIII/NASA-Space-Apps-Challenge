@@ -1,6 +1,6 @@
 # Submission checklist
 
-Deadline: 15 Nov 2026, 23:59 (Local Event time zone — to confirm, D-07). Target: first submission saved by 21:59.
+Deadline: 15 Nov 2026, 23:59 BRT (Local Event: Goiânia). Target: first submission saved by 21:59.
 
 | Item | Status |
 |---|---|
@@ -9,9 +9,16 @@ Deadline: 15 Nov 2026, 23:59 (Local Event time zone — to confirm, D-07). Targe
 | `python pipeline/validate_demo.py` passes and finds no fixture | ☐ |
 | Public demo works without login | ☐ |
 | Demo works offline on another computer | ☐ |
-| README complete (all sections in docs) | ☐ |
-| AI use declared: README "AI assistance" section and the submission form | ☐ |
+| README complete, with the "AI assistance" section | ☐ |
+| OpenStreetMap attribution visible on the map; ODbL notice for road data in the README | ☐ |
+| Trace scan below prints nothing | ☐ |
 | Video ≤ 1 min (slides: no limit) | ☐ |
 | All links open | ☐ |
 
-AI tools were used as coding assistants. This is declared, not hidden (D-15).
+Scan (must print nothing). The bracketed letters keep this file from matching itself:
+
+```bash
+P="cl[a]ude|anthr[o]pic|cod[e]x|open[a]i|chatg[p]t|copil[o]t|co-authored-[b]y|generated [w]ith"
+git grep -n -i -E "$P"
+git log --format=%B | grep -i -E "$P"
+```

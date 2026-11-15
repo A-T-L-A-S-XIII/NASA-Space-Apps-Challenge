@@ -3,7 +3,14 @@
 import type { Timeline } from "./types";
 
 export type ObservedState = "candidate_water" | "no_candidate_water" | "no_valid_observation";
-export type AccessStatus = "interruption_confirmed" | "section_requiring_verification" | "isolation_not_demonstrated";
+export type AccessStatus =
+  | "interruption_confirmed"
+  | "no_path_under_modeled_conditions"
+  | "section_requiring_verification"
+  | "isolation_not_demonstrated";
+
+/** Hand-entered official bulletin (optional, D-14). Never invented. */
+export interface Bulletin { source: string; time: string; timezone: string; segment_id: string }
 export type Basis = "radar" | "external" | "inference";
 
 export interface Statement { text: string; basis: Basis; source: string; time: string | null }
@@ -16,7 +23,10 @@ export interface Exposure {
   latest: { date_id: string; sensor: string; acquisition_time: string; state: ObservedState } | null;
   history: { k: number; n: number; total: number; by_sensor: Record<string, [number, number]> } | null;
   nearest_candidate_water: { date_id: string; distance_m: number | null; search_radius_m: number } | null;
-  access: { status: AccessStatus; label: string; basis: Basis; source: string | null; time: string | null } | null;
+  access: {
+    status: AccessStatus; label: string; basis: Basis; source: string | null; time: string | null;
+    exits: number; cut_exit_ids: string[]; coverage_warning: string | null;
+  } | null;
   statements: Statement[];
   disclaimers: string[];
 }
@@ -42,7 +52,7 @@ export const DISCLAIMERS = [
 
 const NO_VALID = 0, LAND = 1, WATER = 2;
 export const WATER_SEARCH_RADIUS_M = 2000;
-const ACCESS_RADIUS_M = 3000;
+const EXIT_RADIUS_M = 2000; // proposal (D-14); 3–5 km may suit larger towns
 const ROAD_SAMPLE_M = 50;
 const M_LAT = 110574;
 const M_LON_EQ = 111320;
@@ -65,10 +75,12 @@ export class ExposureModel {
   private grid: GridFile;
   private timeline: Timeline;
   private access: { features: Feature[] } | null;
-  constructor(grid: GridFile, timeline: Timeline, access: { features: Feature[] } | null) {
+  private bulletins: Bulletin[];
+  constructor(grid: GridFile, timeline: Timeline, access: { features: Feature[] } | null, bulletins: Bulletin[] = []) {
     this.grid = grid;
     this.timeline = timeline;
     this.access = access;
+    this.bulletins = bulletins;
     for (const [d, s] of Object.entries(grid.dates)) this.states[d] = decode(s);
   }
 
@@ -104,37 +116,59 @@ export class ExposureModel {
     return best <= radius ? Math.round(best * 10) / 10 : null;
   }
 
-  private accessStatus(latestId: string, latestTime: string, lat: number, lon: number): NonNullable<Exposure["access"]> {
-    const feats = this.access?.features ?? [];
-    const near = feats.filter((f) => {
-      if (f.properties.kind !== "interruption" || f.geometry.type !== "Point") return false;
-      const [plon, plat] = f.geometry.coordinates as number[];
-      return dist(lat, lon, plat, plon) <= ACCESS_RADIUS_M;
-    });
-    if (near.length) {
-      const p = near.reduce((a, b) => (a.properties.time >= b.properties.time ? a : b)).properties;
-      return { status: "interruption_confirmed", label: `Interruption confirmed by ${p.source} at ${p.time}`, basis: "external", source: p.source, time: p.time };
-    }
-    for (const f of feats) {
-      if (!["road", "bridge"].includes(f.properties.kind) || f.geometry.type !== "LineString") continue;
-      const cs = f.geometry.coordinates as number[][];
-      for (let i = 0; i + 1 < cs.length; i++) {
-        const [lon1, lat1] = cs[i], [lon2, lat2] = cs[i + 1];
-        const k = Math.max(1, Math.floor(dist(lat1, lon1, lat2, lon2) / ROAD_SAMPLE_M));
-        for (let j = 0; j <= k; j++) {
-          const t = j / k, plat = lat1 + (lat2 - lat1) * t, plon = lon1 + (lon2 - lon1) * t;
-          if (dist(lat, lon, plat, plon) > ACCESS_RADIUS_M) continue;
-          const c = this.cell(plat, plon);
-          if (c && this.at(latestId, c[0], c[1]) === WATER) {
-            return {
-              status: "section_requiring_verification", label: "Section requiring verification", basis: "inference",
-              source: `Radar candidate water (${latestId}) over ${f.properties.source ?? "road data"}`, time: latestTime,
-            };
+  /** Road segments crossing the circle around a point; cut = inside part on candidate water. */
+  roadExits(dateId: string, lat: number, lon: number, radius = EXIT_RADIUS_M) {
+    const exits: { id: string; name?: string; cut: boolean; observed: boolean }[] = [];
+    for (const f of this.access?.features ?? []) {
+      const p = f.properties;
+      if (!["road", "bridge"].includes(p.kind)) continue;
+      const lines = f.geometry.type === "LineString" ? [f.geometry.coordinates as number[][]]
+        : f.geometry.type === "MultiLineString" ? (f.geometry.coordinates as unknown as number[][][]) : [];
+      let inside = false, outside = false, cut = false, observed = false;
+      for (const cs of lines) {
+        for (let i = 0; i + 1 < cs.length; i++) {
+          const [lon1, lat1] = cs[i], [lon2, lat2] = cs[i + 1];
+          const k = Math.max(1, Math.floor(dist(lat1, lon1, lat2, lon2) / ROAD_SAMPLE_M));
+          for (let j = 0; j <= k; j++) {
+            const t = j / k, plat = lat1 + (lat2 - lat1) * t, plon = lon1 + (lon2 - lon1) * t;
+            if (dist(lat, lon, plat, plon) > radius) { outside = true; continue; }
+            inside = true;
+            const c = this.cell(plat, plon);
+            const v = c ? this.at(dateId, c[0], c[1]) : NO_VALID;
+            if (v !== NO_VALID) observed = true;
+            if (v === WATER) cut = true;
           }
         }
       }
+      if (inside && outside) exits.push({ id: p.id, name: p.name, cut, observed });
     }
-    return { status: "isolation_not_demonstrated", label: "Isolation not demonstrated", basis: "inference", source: null, time: null };
+    return exits;
+  }
+
+  private accessStatus(latestId: string, latestTime: string, lat: number, lon: number): NonNullable<Exposure["access"]> {
+    const exits = this.roadExits(latestId, lat, lon);
+    const exitIds = new Set(exits.map((e) => e.id));
+    const cutIds = exits.filter((e) => e.cut).map((e) => e.id);
+    const common = { exits: exits.length, cut_exit_ids: cutIds, coverage_warning: null as string | null };
+    // (a) an official bulletin covers one of the exits
+    const bs = this.bulletins.filter((b) => exitIds.has(b.segment_id));
+    if (bs.length) {
+      const b = bs.reduce((a, c) => (a.time >= c.time ? a : c));
+      return { ...common, status: "interruption_confirmed", label: `Interruption confirmed by ${b.source} at ${b.time}`, basis: "external", source: b.source, time: b.time };
+    }
+    const radarSrc = `NISAR candidate water (${latestId}) over OpenStreetMap roads`;
+    // (b) all exits cut
+    if (exits.length && cutIds.length === exits.length) {
+      return { ...common, status: "no_path_under_modeled_conditions", label: "No path under modeled conditions", basis: "inference", source: radarSrc, time: latestTime };
+    }
+    // (c) at least one exit cut
+    if (cutIds.length) {
+      return { ...common, status: "section_requiring_verification", label: "Section requiring verification", basis: "inference", source: radarSrc, time: latestTime };
+    }
+    // (d) nothing demonstrated; warn when the roads were not observed
+    const warning = !exits.length ? "No mapped road exits within the search radius."
+      : !exits.some((e) => e.observed) ? "No valid radar observation over the roads in the latest acquisition." : null;
+    return { ...common, coverage_warning: warning, status: "isolation_not_demonstrated", label: "Isolation not demonstrated", basis: "inference", source: null, time: null };
   }
 
   compute(lat: number, lon: number): Exposure {
@@ -178,6 +212,9 @@ export class ExposureModel {
         { text: `Water observed here in ${k} of ${n} valid acquisitions (${entries.length} total).`, basis: "radar", source: "All timeline acquisitions", time: last.acquisition_time },
         { text: d !== null ? `Nearest candidate water: ${d.toFixed(0)} m.` : `No candidate water within ${WATER_SEARCH_RADIUS_M} m.`, basis: "radar", source: src, time: last.acquisition_time },
         { text: access.label, basis: access.basis, source: access.source ?? "Access analysis", time: access.time },
+        ...(access.coverage_warning
+          ? [{ text: access.coverage_warning, basis: "inference" as Basis, source: "Access analysis", time: last.acquisition_time }]
+          : []),
       ],
     };
   }

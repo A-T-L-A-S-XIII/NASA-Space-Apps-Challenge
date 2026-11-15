@@ -2,6 +2,7 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { Map as MlMap } from "maplibre-gl";
+import type { FeatureCollection, Point } from "geojson";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { BBox, LayerSet, Locality } from "@/lib/types";
@@ -14,6 +15,8 @@ export interface MapViewProps {
   showChange: boolean;
   localities: Locality[];
   flyTo: { lat: number; lon: number; key: number } | null;
+  roads: FeatureCollection | null;
+  flaggedRoadIds: string[];
 }
 
 const corners = ([w, s, e, n]: BBox): [[number, number], [number, number], [number, number], [number, number]] => [
@@ -30,7 +33,8 @@ const STYLE: maplibregl.StyleSpecification = {
       tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
       tileSize: 256,
       maxzoom: 19,
-      attribution: "© OpenStreetMap contributors",
+      // Tile usage policy: exact HTTPS URL, visible attribution with link, no pre-loading or offline tiles.
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
     },
   },
   layers: [
@@ -52,7 +56,8 @@ export default function MapView(p: MapViewProps) {
       style: STYLE,
       bounds: [[p.bbox[0], p.bbox[1]], [p.bbox[2], p.bbox[3]]],
       fitBoundsOptions: { padding: 24 },
-      attributionControl: { compact: true },
+      // Always expanded: the OSM policy forbids hiding the attribution behind a button.
+      attributionControl: { compact: false },
     });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     m.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
@@ -126,13 +131,32 @@ export default function MapView(p: MapViewProps) {
       const f = e.features?.[0];
       if (!f) return;
       m.getCanvas().style.cursor = "pointer";
-      popup.setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number]).setText(String(f.properties?.name)).addTo(m);
+      popup.setLngLat((f.geometry as Point).coordinates as [number, number]).setText(String(f.properties?.name)).addTo(m);
     });
     m.on("mouseleave", "localities", () => {
       m.getCanvas().style.cursor = "";
       popup.remove();
     });
   }, [ready, p.localities]);
+
+  // Roads (OpenStreetMap context) and, in red, segments crossing candidate water on the current date.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready || !p.roads || m.getSource("roads")) return;
+    m.addSource("roads", { type: "geojson", data: p.roads });
+    m.addLayer({ id: "roads", type: "line", source: "roads", paint: { "line-color": "#5b6b7a", "line-width": 1.5 } }, m.getLayer("aoi") ? "aoi" : undefined);
+    m.addLayer({
+      id: "roads-flagged", type: "line", source: "roads",
+      filter: ["in", ["get", "id"], ["literal", []]],
+      paint: { "line-color": "#c0262d", "line-width": 3.5 },
+    });
+  }, [ready, p.roads]);
+
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready || !m.getLayer("roads-flagged")) return;
+    m.setFilter("roads-flagged", ["in", ["get", "id"], ["literal", p.flaggedRoadIds]]);
+  }, [ready, p.roads, p.flaggedRoadIds]);
 
   useEffect(() => {
     if (p.flyTo && map.current) map.current.flyTo({ center: [p.flyTo.lon, p.flyTo.lat], zoom: 12.5 });
