@@ -30,6 +30,7 @@ frontend/public/api/
 
 # Secrets and local environment
 .env
+.env*.local
 .netrc
 
 # OS / editors

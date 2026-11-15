@@ -1,0 +1,35 @@
+/* ==========================================================================
+   Water Waltz — tokens
+   ========================================================================== */
+
+@font-face { font-family: 'Space Grotesk'; src: url('/fonts/space-grotesk-latin-500-normal.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('/fonts/space-grotesk-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('/fonts/dm-sans-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('/fonts/dm-sans-latin-400-italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('/fonts/dm-sans-latin-500-normal.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('/fonts/dm-sans-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+:root {
+  /* Paleta Water Waltz: #142314 fundo · #88CE71 destaque · #007387 azul · #50512D linhas.
+     #2AA3B8 (azul clareado) e #7E7F4B (oliva clareado) só onde o contraste sobre o fundo exige. */
+  --fundo: #142314;
+  --fundo-2: #1B2D1B;
+  --fundo-3: #223622;
+  --linha: #50512D;          /* todas as divisórias */
+  --linha-forte: #7E7F4B;     /* bordas de controles: 3,9:1 sobre o fundo (WCAG 1.4.11) */
+  --lima: #88CE71;
+  --lima-2: #76BE5E;
+  --azul: #007387;
+  --agua: #2AA3B8;           /* água nova no mapa */
+  --texto: #FCFAF5;
+  --texto-2: #D3D9CC;
+  --texto-3: #9BA892;
+  --perigo: #FF9B8A;
+  --serie-asc: #2AA3B8; --serie-desc: #A8962A;   /* gráfico de passagens (validado no fundo escuro) */
+
+  --sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --display: 'Space Grotesk', 'DM Sans', ui-sans-serif, sans-serif;
+  --mono: 'Space Grotesk', 'DM Sans', ui-sans-serif, sans-serif;   /* rótulos e números: Space Grotesk (sem fonte mono) */
+  --serif: 'Space Grotesk', 'DM Sans', ui-sans-serif, sans-serif;  /* destaques em lima, sem itálico */
+  --mola: cubic-bezier(.2, .8, .2, 1);
+  --altura-cab: 60px;
+}

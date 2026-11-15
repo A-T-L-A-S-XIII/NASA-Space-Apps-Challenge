@@ -1,0 +1,86 @@
+/* ==========================================================================
+   Temas por tela. O <html> recebe data-tema (escuro|claro) e data-tela (login|painel|analise).
+   Escuro: só o login usa a paleta azul/lavanda; no painel, só o planeta (o resto fica verde).
+   Claro: login + painel na salmão/petróleo, análise "terra". A análise no escuro segue o verde padrão.
+   ========================================================================== */
+
+/* Globo: cores padrão (lidas pelo canvas via getComputedStyle) */
+:root {
+  --globo-oceano: #1F3667; --globo-oceano-2: #142446; --globo-terra: #2F626C; --globo-borda: #716591;
+  --globo-grade: #2A4579; --globo-ponto: #C7C8D7; --globo-ponto-claro: #FFFFFF; --globo-aura: 60 91 145; --globo-texto: #F3F3F8;
+}
+
+/* ---------- ESCURO · login: azul-marinho / lavanda (no painel, só o planeta usa essa paleta: --globo-* no :root) ---------- */
+html[data-tema="escuro"][data-tela="login"] {
+  --fundo: #1F3667; --fundo-2: #172A52; --fundo-3: #2A4374;
+  --linha: #3C5B91; --linha-forte: #9A90BA;
+  --lima: #C7C8D7; --lima-2: #B3B5C9;
+  --azul: #3C5B91; --agua: #2F626C;
+  --texto: #F3F3F8; --texto-2: #C7C8D7; --texto-3: #A9ABC2;
+  --palco-luz: #2A4374;
+  --gn-onda: #3C5B91; --gn-onda-2: #716591; --gn-centro: #2F626C; --gn-arco: #C7C8D7; --gn-papel: #716591;
+}
+
+/* ---------- CLARO · login e globo: salmão / ferrugem / petróleo ---------- */
+html[data-tema="claro"][data-tela="login"], html[data-tema="claro"][data-tela="painel"],
+html[data-tema="claro"] .palco--globo, html[data-tema="claro"] .palco--mergulhando {
+  color-scheme: light;
+  --fundo: #F7EFEA; --fundo-2: #EFE2DA; --fundo-3: #E8D5CB;
+  --linha: #E0C9BE; --linha-forte: #A87659;
+  --lima: #8B3727; --lima-2: #7A2F21;
+  --azul: #0B5762; --agua: #3B6572;
+  --texto: #593A2F; --texto-2: #6E4A3D; --texto-3: #7A5546;
+  --palco-luz: #FBF6F2;
+  --gn-onda: #3B6572; --gn-onda-2: #A87659; --gn-centro: #0B5762; --gn-arco: #0B5762; --gn-papel: #A87659;   /* água em petróleo, nada de vermelho */
+  --globo-oceano: #3B6572; --globo-oceano-2: #0B5762; --globo-terra: #A87659; --globo-borda: #593A2F;
+  --globo-grade: #4E7684; --globo-ponto: #8B3727; --globo-ponto-claro: #F7EFEA; --globo-aura: 187 130 120; --globo-texto: #593A2F;
+}
+html[data-tema="claro"][data-tela="login"], html[data-tema="claro"][data-tela="painel"] { color-scheme: light; }
+html[data-tema="claro"] .palco--globo .foco { box-shadow: 0 30px 60px -34px rgb(89 58 47 / .45); }
+
+/* ---------- CLARO · análise "terra" ---------- */
+html[data-tema="claro"][data-tela="analise"] {
+  color-scheme: light;
+  --fundo: #F4EEE4; --fundo-2: #E6DCCB; --fundo-3: #D9CDB6;
+  --linha: #C8B496; --linha-forte: #9A5C42;
+  --lima: #8B3727; --lima-2: #9A5C42;
+  --azul: #0B5762; --agua: #3B6572;
+  --texto: #5A2D2D; --texto-2: #593A2F; --texto-3: #6B4A3C;
+  --perigo: #8B3727;
+  --serie-asc: #00879F; --serie-desc: #B0582C;   /* gráfico: validado sobre #F4EEE4 */
+  --terra-vinho: #5A2D2D; --terra-terracota: #9A5C42; --terra-areia: #C8B496; --terra-salvia: #B8C6C0; --terra-ardosia: #6F829E;
+}
+/* janelas da análise terra */
+html[data-tema="claro"][data-tela="analise"] .numeros__item { background: var(--fundo-2); }
+html[data-tema="claro"][data-tela="analise"] .numeros__item--destaque { background: var(--terra-vinho); color: #F4EEE4; }
+html[data-tema="claro"][data-tela="analise"] .numeros__item--destaque span,
+html[data-tema="claro"][data-tela="analise"] .numeros__item--destaque small { color: var(--terra-areia); }
+html[data-tema="claro"][data-tela="analise"] .numeros__item--destaque .numeros__valor { color: #F4EEE4; }
+html[data-tema="claro"][data-tela="analise"] .aviso-metodo { background: var(--terra-salvia); border-left-color: var(--terra-terracota); }
+html[data-tema="claro"][data-tela="analise"] .aviso-metodo span { color: var(--terra-vinho); }
+html[data-tema="claro"][data-tela="analise"] .radar-destaque,
+html[data-tema="claro"][data-tela="analise"] .passagens__quadro { border-color: var(--terra-terracota); }
+html[data-tema="claro"][data-tela="analise"] .radar-destaque figcaption { background: var(--terra-areia); color: var(--terra-vinho); border-top-color: var(--terra-terracota); }
+html[data-tema="claro"][data-tela="analise"] .barra__preenchimento, html[data-tema="claro"][data-tela="analise"] .ranking__barra i { background: var(--terra-ardosia); }
+html[data-tema="claro"][data-tela="analise"] .cabecalho { background: color-mix(in srgb, var(--fundo) 88%, transparent); }
+
+/* ---------- botão claro/escuro ---------- */
+.botao-tema { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border: 1px solid var(--linha-forte); border-radius: 999px; background: transparent; color: var(--texto); transition: background .25s, color .25s, border-color .25s, transform .4s var(--mola); }
+.botao-tema:hover { background: var(--lima); color: var(--fundo); border-color: var(--lima); transform: rotate(-18deg); }
+.botao-tema:focus-visible { outline: 2px solid var(--lima); outline-offset: 3px; }
+.login__tema { position: absolute; top: 1.2rem; right: 1.2rem; z-index: 5; }
+html[data-tema="claro"][data-tela="analise"] .numeros__item { padding: 1.4rem; border-radius: 14px; }
+html[data-tema="claro"][data-tela="analise"] .numeros { gap: .8rem; border: 0; }
+html[data-tema="claro"][data-tela="analise"] .numeros__item + .numeros__item { border-left: 0; padding-left: 1.4rem; }
+
+/* o palco do globo herda a cor do texto da própria paleta (não do painel verde) */
+.palco--globo, .palco--mergulhando { color: var(--texto); }
+.palco--globo .palco__titulo, .palco--mergulhando .palco__titulo { background: linear-gradient(180deg, color-mix(in srgb, var(--fundo) 92%, transparent) 0%, transparent 100%); }
+
+/* painel no claro: detalhes que dependiam do verde */
+html[data-tema="claro"][data-tela="painel"] .palco { --palco-luz: #FBF6F2; }
+html[data-tema="claro"][data-tela="painel"] .palco--regional { --palco-luz: #EFE2DA; }
+html[data-tema="claro"][data-tela="painel"] .lateral { background: color-mix(in srgb, var(--fundo) 92%, transparent); }
+html[data-tema="claro"][data-tela="painel"] .lateral, html[data-tema="claro"][data-tela="painel"] .trilho { border-color: var(--linha); }
+html[data-tema="claro"][data-tela="painel"] .boas-vindas::backdrop { background: rgb(89 58 47 / .35); }
+html[data-tema="claro"][data-tela="painel"] .boas-vindas { box-shadow: 0 40px 80px -34px rgb(89 58 47 / .45); }

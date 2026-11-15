@@ -1,0 +1,28 @@
+{
+  "evento": "Enchente do Vale do Taquari (RS)",
+  "local": "Lajeado, Estrela, Encantado e região",
+  "satelite": "NISAR (NASA-ISRO)",
+  "produto": "GCOV banda L · HH",
+  "data_antes": "2026-07-11",
+  "data_depois": "2026-07-23",
+  "agua_antes_km2": 16.8,
+  "agua_depois_km2": 20.4,
+  "area_alagada_km2": 4.2,
+  "limites_leaflet": [
+    [
+      -29.552539899387096,
+      -52.15449999703639
+    ],
+    [
+      -29.14745334368712,
+      -51.796958811723734
+    ]
+  ],
+  "arquivos": {
+    "antes": "radar_antes.png",
+    "depois": "radar_depois.png",
+    "alagado": "alagado.png",
+    "vetor": "area_alagada.geojson"
+  },
+  "fonte": "NASA/ISRO NISAR via ASF DAAC"
+}
