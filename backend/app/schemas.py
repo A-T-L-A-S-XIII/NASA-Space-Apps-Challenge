@@ -489,3 +489,28 @@ class CityStatus(BaseModel):
     note: str | None
     text: str = Field(description="Frase curta para o cidadão")
     alerts: list[AlertOut] = Field(description="Alertas ativos da cidade e da região inteira")
+
+
+# ------------------------------------------------------------ NISAR processado
+class NisarScene(BaseModel):
+    date: str = Field(description="Data da passagem (AAAA-MM-DD)")
+    acquisition_time: str
+    granule: str
+    track: str | None = Field(description="Trilha, ex.: 103_A_163. Só compare cenas da mesma trilha")
+    flight_direction: str | None
+    polarization: str
+    method: Literal["fixed", "otsu"]
+    threshold_db: float
+    water_area_km2: float = Field(description="Área de água no recorte processado (UTM)")
+    valid_fraction: float = Field(description="Fração do recorte com medição válida")
+    scene_coverage: float = Field(description="Fração do bbox da região coberta pela cena")
+    pixel_size_m: float
+    bbox: BBox
+    processed_at: str
+    file: str
+
+
+class NisarProcessed(BaseModel):
+    region_id: str
+    count: int
+    scenes: list[NisarScene] = Field(description="Da mais recente para a mais antiga")

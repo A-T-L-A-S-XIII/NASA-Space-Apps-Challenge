@@ -1,8 +1,8 @@
 """Interface das fontes de mancha d'água.
 
-Os endpoints só conversam com um WaterProvider. Hoje existe o DemoProvider;
-o NisarProvider vai implementar os mesmos dois métodos com dado real, e os
-endpoints não precisam mudar.
+Os endpoints só conversam com um WaterProvider. O DemoProvider gera manchas
+ilustrativas; o NisarProvider usa as cenas reais processadas e cai no demo
+nos meses sem cena.
 """
 
 from abc import ABC, abstractmethod
@@ -18,6 +18,7 @@ class WaterMask:
     source: str  # "demo", "nisar"...
     note: str | None = None
     event: str | None = None
+    scene: dict | None = None  # metadados da cena NISAR processada, quando houver
 
 
 class WaterProvider(ABC):
@@ -30,3 +31,7 @@ class WaterProvider(ABC):
     @abstractmethod
     def baseline(self, region: dict) -> WaterMask:
         """Mancha de referência ("normal"), usada para calcular a anomalia."""
+
+    def baseline_for(self, region: dict, mask: WaterMask) -> WaterMask:
+        """Referência para uma mancha específica. Por padrão, a mesma para todos os meses."""
+        return self.baseline(region)

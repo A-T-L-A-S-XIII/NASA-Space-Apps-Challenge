@@ -17,9 +17,10 @@ os.environ["JWT_SECRET"] = "chave-de-teste-com-pelo-menos-32-bytes!!"
 os.environ["SEED_GOV_EMAIL"] = "gov@teste.dev"
 os.environ["SEED_GOV_PASSWORD"] = "senha-gov-123"
 os.environ["TFW_DATA_DIR"] = str(FIXTURES)
-# Testes nunca usam os snapshots reais de app/data/snapshots nem o modo offline do .env
+# Testes nunca usam os snapshots e manchas reais de app/data nem o modo offline do .env
 os.environ["OFFLINE_MODE"] = "false"
 os.environ["SNAPSHOT_DIR"] = str(REPO / "backend" / "tests" / "_sem_snapshots")
+os.environ["NISAR_DIR"] = str(REPO / "backend" / "tests" / "_sem_nisar")
 
 from app.db import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402

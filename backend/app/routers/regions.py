@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, Query
 from app import providers
 from app.data.regions import REGIONS, bbox_to_wkt
 from app.routers.deps import region_or_404
-from app.schemas import Region, RegionStatus, ScenesResponse
+from app.providers.nisar import processed_scenes
+from app.schemas import NisarProcessed, Region, RegionStatus, ScenesResponse
 from app.services import asf
 from app.services.status import region_status
 
@@ -55,3 +56,13 @@ async def region_scenes(
         "error": result["error"],
         "snapshot_date": result.get("snapshot_date"),
     }
+
+
+@router.get("/{region_id}/nisar-processed", response_model=NisarProcessed, summary="Cenas NISAR já processadas",
+            responses={404: {"description": "Região não encontrada"}})
+def nisar_processed(region: dict = Depends(region_or_404)):
+    """Manchas reais geradas por `scripts/process_nisar.py`. Nos meses delas, `/water-mask` e `/compare`
+    usam o dado real com `source: "nisar"`."""
+    scenes = [{k: v for k, v in s.items() if k != "geometry"} for s in processed_scenes(region["id"])]
+    scenes.reverse()
+    return {"region_id": region["id"], "count": len(scenes), "scenes": scenes}

@@ -88,8 +88,16 @@ def _stats(mask: WaterMask, baseline_km2: float, region: dict) -> dict:
     }
 
 
-def _baseline_km2(provider: WaterProvider, region: dict) -> float:
-    return geo.area_km2(provider.baseline(region).geometry, region)
+def _baseline_km2(provider: WaterProvider, region: dict, mask: WaterMask | None = None) -> float:
+    base = provider.baseline_for(region, mask) if mask is not None else provider.baseline(region)
+    return geo.area_km2(base.geometry, region)
+
+
+def _overall_source(sources: set[str], provider: WaterProvider) -> str:
+    """Se algum mês é demo, a resposta toda é marcada como demo."""
+    if "demo" in sources:
+        return "demo"
+    return sources.pop() if len(sources) == 1 else provider.source
 
 
 async def timeline(provider: WaterProvider, region: dict, start: str, end: str) -> dict:
@@ -97,21 +105,22 @@ async def timeline(provider: WaterProvider, region: dict, start: str, end: str) 
     climate = await enso.get_enso()
     oni_by_month = enso.by_month(climate)
 
-    series, notes = [], set()
+    series, notes, sources = [], set(), set()
     for month in month_range(start, end):
         mask = provider.water_mask(region, month)
+        sources.add(mask.source)
         if mask.note:
             notes.add(mask.note)
         oni = oni_by_month.get(month)
         series.append({
-            **_stats(mask, baseline_km2, region),
+            **_stats(mask, _baseline_km2(provider, region, mask), region),
             "oni": oni["oni"] if oni else None,
             "enso_phase": oni["phase"] if oni else None,
         })
 
     return {
         "region_id": region["id"],
-        "source": provider.source,
+        "source": _overall_source(sources, provider),
         "note": " ".join(sorted(notes)) or None,
         "start": start,
         "end": end,
@@ -125,7 +134,7 @@ async def timeline(provider: WaterProvider, region: dict, start: str, end: str) 
 def water_mask_geojson(provider: WaterProvider, region: dict, month: str) -> dict:
     mask = provider.water_mask(region, month)
     properties = {
-        **_stats(mask, _baseline_km2(provider, region), region),
+        **_stats(mask, _baseline_km2(provider, region, mask), region),
         "cidades_atingidas": geo.affected_cities(mask.geometry, region),
         "note": mask.note,
     }
@@ -141,11 +150,10 @@ def water_mask_geojson(provider: WaterProvider, region: dict, month: str) -> dic
 
 def frames(provider: WaterProvider, region: dict, start: str, end: str) -> dict:
     """Todas as manchas de start a end, com geometria simplificada, para a linha do tempo animada."""
-    baseline_km2 = _baseline_km2(provider, region)
     items, notes, sources = [], set(), set()
     for month in month_range(start, end):
         mask = provider.water_mask(region, month)
-        stats = _stats(mask, baseline_km2, region)
+        stats = _stats(mask, _baseline_km2(provider, region, mask), region)
         notes.add(mask.note)
         sources.add(mask.source)
         items.append({
@@ -157,7 +165,7 @@ def frames(provider: WaterProvider, region: dict, start: str, end: str) -> dict:
         })
     return {
         "region_id": region["id"],
-        "source": "demo" if "demo" in sources else (sources.pop() if sources else provider.source),
+        "source": _overall_source(sources, provider),
         "note": " ".join(sorted(notes - {None})) or None,
         "start": start,
         "end": end,

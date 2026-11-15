@@ -78,6 +78,7 @@ Rode o script de novo perto do pitch para os dados ficarem atualizados.
 | GET | `/api/regions` | Regiões monitoradas (piloto: `vale-do-taquari`) | fixo |
 | GET | `/api/regions/{id}` | Bbox, centro, cidades e traçado do rio | fixo |
 | GET | `/api/regions/{id}/status` | Resumo para o card principal: água do mês, ENSO e última cena NISAR | demo + ao vivo |
+| GET | `/api/regions/{id}/nisar-processed` | Cenas NISAR já processadas em mancha real (granule, data, trilha, limiar, área) | **NISAR real** |
 | GET | `/api/regions/{id}/scenes` | Cenas NISAR do ASF (`start`, `end`, `product=GCOV`, `limit=25`) | **ao vivo** |
 | GET | `/api/regions/{id}/timeline` | Série mensal: área, anomalia, status, ONI e fase ENSO (`start=2022-01`, `end`) | demo + ONI ao vivo |
 | GET | `/api/regions/{id}/water-mask` | GeoJSON da mancha d'água (`date=AAAA-MM`), área e cidades atingidas | demo |
@@ -156,6 +157,47 @@ Cuidados:
   Abra a API alguns minutos antes do pitch.
 - As rotas de **radar processado** respondem 503 sem `data/demo/` (que não está no repositório).
 
+## Mancha real do NISAR
+
+`scripts/process_nisar.py` gera a mancha a partir de uma cena GCOV, fora da API:
+
+```bash
+pip install -r scripts/requirements-nisar.txt   # asf_search, earthaccess, h5py, rasterio
+# no .env: EARTHDATA_USERNAME e EARTHDATA_PASSWORD (conta grátis em urs.earthdata.nasa.gov)
+python scripts/process_nisar.py --estimate      # mostra a cena e quantos MB o recorte vai baixar
+python scripts/process_nisar.py                 # limiar fixo de -18 dB
+python scripts/process_nisar.py --method otsu   # ou --threshold -16, --pol VV, --granule ...
+```
+
+1. Busca a cena GCOV mais recente que cobre pelo menos 50% do bbox da região. Se não houver
+   nenhuma, usa o Guaíba/Porto Alegre e avisa.
+2. Abre o HDF5 (~7 GB) por **streaming**: só os chunks do recorte do bbox são baixados.
+3. Lê o recorte em faixas e faz a média de blocos 2×2 (`--downsample 2`, de 10 m para 20 m): menos ruído
+   e 4× menos memória. Na resolução nativa (`--downsample 1`), o recorte do Taquari tem 39 milhões de
+   pixels e pode estourar a RAM de uma máquina com 5 GB.
+4. Converte HH (ou VV) para dB, aplica o limiar, limpa o ruído (maioria 3×3 e manchas menores que 1 ha),
+   vetoriza com `rasterio.features.shapes`, simplifica e salva
+   `app/data/nisar/{region_id}_{AAAA-MM-DD}.geojson` com granule, data, trilha, limiar e área em km².
+
+O `NisarProvider` (`app/providers/nisar.py`) é o provider de todas as regiões:
+
+- No mês que tem cena processada, `/water-mask`, `/compare`, `/timeline` e `/frames` usam a mancha
+  real com `"source": "nisar"` (se houver mais de uma no mês, vale a mais recente).
+- A anomalia da mancha real compara só com cenas processadas **da mesma trilha** (a mediana delas).
+  Com uma cena só, a anomalia é 0 e o status, `normal`.
+- Nos outros meses, cai no `DemoProvider`, com `"source": "demo"`. Se uma resposta mistura os dois
+  (ex.: `/compare` entre um mês demo e um mês NISAR), o `source` geral é `demo`.
+
+Já processada: **31/10/2026**, trilha `103_A_163`, HH, limiar −18 dB, **32,8 km²** de água no bbox
+(cerca de 1,5 min e 400 MB de RAM, baixando ~107 MB do arquivo de 6,9 GB).
+
+Cuidados:
+
+- A mancha real é **toda a água** detectada no recorte (rio, açudes, lagos), não só o rio. Comparar a
+  área dela com a de um mês demo não faz sentido.
+- Em área urbana, o radar enxerga menos água do que existe. Vegetação alagada pode passar despercebida em HH.
+- Só compare datas da **mesma trilha e da mesma versão** do produto (decisão T-01).
+
 ## Próximos passos: trocar o DemoProvider por NISAR real
 
 As rotas de água só conversam com um `WaterProvider` (`app/providers/base.py`), que tem dois
@@ -171,12 +213,9 @@ métodos: `water_mask(region, month)` e `baseline(region)`. Para usar dado real:
    - Limpar ruído (filtro de mediana, remover manchas pequenas), vetorizar a máscara
      (`rasterio.features.shapes`), simplificar e salvar como GeoJSON com metadados: granule,
      data, trilha, limiar e área em km².
-2. **Criar `app/providers/nisar.py`** com um `NisarProvider` que lê esses GeoJSON:
-   - `water_mask` devolve a mancha da data pedida com `source="nisar"`, e `baseline`, a mediana das
-     datas da mesma trilha.
-   - Para meses sem cena processada, ele delega ao `DemoProvider`, que continua marcado como demo.
-3. **Ligar em `get_provider()`** (`app/providers/__init__.py`). Os endpoints não mudam.
-4. Cuidados:
+2. **Processar mais cenas.** O `NisarProvider` e o script já existem (seção acima); falta rodar o
+   script para mais datas e calibrar o limiar com cenas de cheia conhecidas.
+3. Cuidados:
    - Só comparar datas da **mesma trilha e da mesma versão** do produto (decisão T-01).
    - Em área urbana, o radar enxerga menos água do que existe.
    - Marcar como "sem observação válida" o que o radar não conseguiu medir.

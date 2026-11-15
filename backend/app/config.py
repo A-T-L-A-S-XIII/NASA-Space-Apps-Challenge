@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     offline_mode: bool = False
     snapshot_dir: str = str(Path(__file__).resolve().parent / "data" / "snapshots")
 
+    # Manchas reais do NISAR geradas por scripts/process_nisar.py
+    nisar_dir: str = str(Path(__file__).resolve().parent / "data" / "nisar")
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_origins(cls, value):
