@@ -6,7 +6,7 @@ from shapely.geometry import box
 
 from app.data.regions import REGIONS
 from app.providers import WaterMask, WaterProvider
-from app.routers import regions as regions_router
+from app import providers
 from app.services import enso, geo, water
 
 TAQUARI = REGIONS["vale-do-taquari"]
@@ -326,7 +326,7 @@ class FakeProvider(WaterProvider):
 
 
 def test_endpoints_usam_o_provider_da_regiao(client, monkeypatch):
-    monkeypatch.setattr(regions_router, "get_provider", lambda region_id: FakeProvider())
+    monkeypatch.setattr(providers, "get_provider", lambda region_id: FakeProvider())
 
     timeline = client.get(f"{BASE}/timeline?start=2024-04&end=2024-05").json()
     assert timeline["source"] == "fake"

@@ -207,3 +207,213 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+# ------------------------------------------------------------------ sistema
+class Health(BaseModel):
+    status: Literal["ok"]
+
+
+# ------------------------------------------------------------------ regiões
+# Campos em português/inglês seguem o JSON que o frontend já consome.
+StatusAgua = Literal["seca", "normal", "alerta", "enchente"]
+FaseEnso = Literal["El Niño", "La Niña", "Neutro"]
+
+
+class City(BaseModel):
+    name: str
+    lat: float
+    lon: float
+
+
+class River(BaseModel):
+    name: str
+    coordinates: list[tuple[float, float]] = Field(description="Pontos [lon, lat], de norte a sul")
+
+
+class Region(BaseModel):
+    id: str
+    name: str
+    state: str
+    bbox: BBox = Field(description="[lon_min, lat_min, lon_max, lat_max]")
+    center: tuple[float, float] = Field(description="[lat, lon] (formato do Leaflet)")
+    zoom: int
+    cities: list[City]
+    river: River
+
+
+class Scene(BaseModel):
+    granule: str
+    start_time: str | None
+    product: str | None
+    flight_direction: str | None
+    data_maturity: str | None
+    url: str | None
+    browse: str | None
+    size_mb: float | None
+    geometry: dict | None
+
+
+class ScenesResponse(BaseModel):
+    region_id: str
+    live: bool = Field(description="False quando o ASF não respondeu")
+    count: int
+    query: dict
+    scenes: list[Scene] = Field(description="Da cena mais recente para a mais antiga")
+    error: str | None
+
+
+# ------------------------------------------------------- água (linha do tempo)
+class TimelinePoint(BaseModel):
+    date: str = Field(description="AAAA-MM")
+    water_area_km2: float
+    anomaly_pct: float = Field(description="Diferença em % para a linha de base")
+    status: StatusAgua
+    oni: float | None = Field(description="ONI da NOAA para a estação centrada neste mês")
+    enso_phase: FaseEnso | None
+    event: str | None
+    source: str = Field(description='"demo" para dado ilustrativo')
+
+
+class EnsoSource(BaseModel):
+    live: bool
+    source: str
+    error: str | None
+
+
+class RegionTimeline(BaseModel):
+    region_id: str
+    source: str
+    note: str | None
+    start: str
+    end: str
+    baseline_km2: float
+    enso: EnsoSource
+    series: list[TimelinePoint]
+
+
+class WaterMaskProperties(BaseModel):
+    date: str
+    water_area_km2: float
+    anomaly_pct: float
+    status: StatusAgua
+    event: str | None
+    source: str
+    cidades_atingidas: list[str]
+    note: str | None
+
+
+class WaterMaskFeature(BaseModel):
+    type: Literal["Feature"]
+    geometry: dict = Field(description="Geometria GeoJSON (Polygon ou MultiPolygon) em lon/lat")
+    properties: WaterMaskProperties
+
+
+class WaterMaskCollection(BaseModel):
+    type: Literal["FeatureCollection"]
+    region_id: str
+    date: str
+    source: str
+    note: str | None
+    features: list[WaterMaskFeature]
+
+
+class CompareSide(BaseModel):
+    date: str
+    water_area_km2: float
+    status: StatusAgua
+    cidades_atingidas: list[str]
+    geojson: WaterMaskCollection
+
+
+class Compare(BaseModel):
+    region_id: str
+    source: str
+    note: str | None
+    before: CompareSide
+    after: CompareSide
+    delta_km2: float
+    delta_pct: float | None
+    cidades_atingidas: list[str] = Field(description="Cidades atingidas no mês de depois")
+    summary: str = Field(description="Frase para o cidadão leigo")
+
+
+# -------------------------------------------------------------------- clima
+class OniPoint(BaseModel):
+    season: str = Field(description="Estação de 3 meses, ex.: DJF")
+    year: int
+    month: str = Field(description="Mês central da estação (AAAA-MM)")
+    total: float
+    oni: float
+    phase: FaseEnso
+
+
+class Enso(BaseModel):
+    live: bool
+    source: str
+    url: str
+    fetched_at: str | None
+    latest: OniPoint | None
+    count: int
+    series: list[OniPoint]
+    error: str | None
+
+
+# --------------------------------------------------------------- explicações
+class LegendEntry(BaseModel):
+    label: str
+    color: str = Field(description="Cor em hexadecimal")
+    pattern: Literal["solid", "hatch"] = "solid"
+    meaning: str
+
+
+class ExplainTopic(BaseModel):
+    id: str
+    title: str
+    summary: str
+    body: str = Field(description="Texto em parágrafos separados por linha em branco")
+    icon: str = Field(description="Nome genérico de ícone (ex.: radar, droplets)")
+    legend: list[LegendEntry] | None = Field(None, description="Só no tópico como-ler-o-mapa")
+
+
+# ---------------------------------------------------------- status da região
+class StatusWater(BaseModel):
+    date: str
+    water_area_km2: float
+    anomaly_pct: float
+    status: StatusAgua
+    event: str | None
+    source: str
+    note: str | None
+
+
+class StatusEnso(BaseModel):
+    live: bool
+    month: str | None = Field(description="Mês central da última estação publicada pela NOAA")
+    season: str | None
+    oni: float | None
+    phase: FaseEnso | None
+    error: str | None
+
+
+class StatusScene(BaseModel):
+    live: bool
+    scene: Scene | None = Field(description="Cena NISAR GCOV mais recente sobre a região")
+    error: str | None
+
+
+class RegionStatus(BaseModel):
+    region_id: str
+    region_name: str
+    water: StatusWater
+    enso: StatusEnso
+    latest_scene: StatusScene
+    text: str = Field(description="Resumo curto para o card principal")
+
+
+# ----------------------------------------------------------- radar (arquivos)
+class FeatureCollection(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    type: Literal["FeatureCollection"]
+    features: list[dict]

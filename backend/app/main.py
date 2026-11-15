@@ -8,7 +8,8 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.db import SessionLocal, create_tables
-from app.routers import api, auth, climate, regions
+from app.routers import api, auth, climate, explain, regions, water
+from app.schemas import Health
 from app.services.store import DatasetMissing
 from app.services.users import ensure_seed_gov
 
@@ -21,10 +22,25 @@ async def lifespan(app: FastAPI):
     yield
 
 
+TAGS = [
+    {"name": "Sistema", "description": "Saúde da API."},
+    {"name": "Autenticação", "description": "Cadastro, login e contas do governo."},
+    {"name": "Regiões", "description": "Regiões monitoradas, resumo do card principal e cenas NISAR ao vivo do ASF."},
+    {"name": "Água", "description": "Linha do tempo, mancha d'água e antes/depois. "
+                                   "Hoje vêm do DemoProvider: dados ilustrativos com `source: \"demo\"`."},
+    {"name": "Clima", "description": "Índice ONI (El Niño / La Niña) ao vivo da NOAA."},
+    {"name": "Explicações", "description": "Textos em português simples para o cidadão."},
+    {"name": "Radar processado", "description": "Camadas e estatísticas de radar processadas antes, fora da API "
+                                                "(`data/demo` ou `data/fixtures`)."},
+]
+
 app = FastAPI(
     title=settings.app_name,
-    description="Serves precomputed radar water-change layers and statistics. "
-                "Candidate water-change indicator — not a validated flood map.",
+    description="API do Water Waltz: secas e enchentes no Vale do Taquari (RS) com radar NISAR.\n\n"
+                "Indicador de mudança de água candidata a partir de radar: **não é um mapa validado de "
+                "enchente**, não é previsão e não serve para decidir rota ou evacuação. "
+                "Todo dado ilustrativo vem marcado com `source: \"demo\"` ou `fixture: true`.",
+    openapi_tags=TAGS,
     lifespan=lifespan,
 )
 
@@ -54,10 +70,12 @@ async def dataset_missing(request, exc: DatasetMissing):
 
 app.include_router(auth.router)
 app.include_router(regions.router)
-app.include_router(api.router)
+app.include_router(water.router)
 app.include_router(climate.router)
+app.include_router(explain.router)
+app.include_router(api.router)
 
 
-@app.get("/health")
+@app.get("/health", response_model=Health, tags=["Sistema"], summary="Saúde da API")
 def health():
     return {"status": "ok"}
