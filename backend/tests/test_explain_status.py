@@ -152,8 +152,10 @@ def test_status_regiao_inexistente(client):
 
 # --- Documentação (Swagger) ---
 
-FILE_ROUTES = {"/api/aoi", "/api/grid", "/api/files/{path}", "/api/download/{kind}", "/api/gov/export/{region_id}.csv"}
-PT_TAGS = {"Sistema", "Autenticação", "Regiões", "Água", "Alertas", "Clima", "Explicações", "Radar processado"}
+FILE_ROUTES = {"/api/aoi", "/api/grid", "/api/files/{path}", "/api/download/{kind}", "/api/gov/export/{region_id}.csv",
+               "/api/regions/{region_id}/export", "/api/static/nisar/{folder}/{name}"}
+PT_TAGS = {"Sistema", "Autenticação", "Regiões", "Água", "Alertas", "Clima", "Explicações", "Radar processado",
+           "Previsão", "Busca", "Passagens NISAR"}
 
 
 def test_openapi_tags_em_portugues_e_rotas_documentadas():

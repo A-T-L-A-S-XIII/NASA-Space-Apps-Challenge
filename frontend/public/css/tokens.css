@@ -1,0 +1,139 @@
+/* ==========================================================================
+   Water Waltz · Design tokens
+   Paleta derivada das referências da pasta do projeto:
+   - Earthy (dawn of dreams): moss #5F6C37, dark green #273617, earth yellow #DCA15D,
+     silk #FEFADF, greyorange #BC6C25
+   - Green moon (dark mode 2): #123524, #40826D, #DCDCDC, #556B2F, #88D8C0
+   - Sea from space (light mode 1): ochre, aqua, teal, blue, indigo, midnight
+   - Site natureza: cinza-pedra #5F625E, cards claros #DCDCDC
+   - Tela de login: papel kraft + tinta sumi
+   Contrastes (WCAG) anotados contra o fundo do tema escuro (--bg #0B1510).
+   ========================================================================== */
+:root {
+  /* --- Primitivos --------------------------------------------------------- */
+  --forest-950: #0B1510;
+  --forest-900: #10241A;
+  --forest-850: #123524;   /* green moon */
+  --forest-700: #273617;   /* earthy dark green */
+  --moss-600:   #556B2F;
+  --moss-500:   #5F6C37;
+  --moss-300:   #A9B27E;
+  --sea-600:    #40826D;
+  --sea-300:    #88D8C0;   /* mint */
+  --teal-500:   #2C9AA0;
+  --blue-600:   #34558B;
+  --indigo-700: #333865;
+  --deep-900:   #0B0F2E;
+  --earth-400:  #DCA15D;   /* earth yellow */
+  --ochre-500:  #D9AE3A;
+  --rust-600:   #BC6C25;   /* greyorange */
+  --silk-50:    #FEFADF;
+  --stone-200:  #DCDCDC;
+  --slate-500:  #5F625E;
+  --kraft-100:  #EAD9B6;
+  --kraft-300:  #D2B98A;
+  --ink-900:    #1B1712;
+
+  /* --- Semânticos (tema escuro = padrão) ------------------------------------ */
+  --bg:          var(--forest-950);
+  --bg-elev:     #0F1D16;
+  --surface:     #142519;
+  --surface-2:   #1B3022;
+  --surface-glass: rgba(16, 36, 26, .72);
+  --line:        rgba(254, 250, 223, .12);
+  --line-strong: rgba(254, 250, 223, .24);
+  --text:        var(--silk-50);   /* 18.4:1 */
+  --text-muted:  #C9CDB4;          /* 12.1:1 */
+  --text-faint:  #98A08A;          /*  6.9:1 */
+  --accent:      var(--earth-400); /*  9.0:1 — destaque/CTA */
+  --accent-ink:  var(--ink-900);   /* texto sobre --accent: 9.6:1 */
+  --accent-soft: rgba(220, 161, 93, .16);
+  --water:       var(--sea-300);   /* 11.4:1 — dados de água/SAR */
+  --water-soft:  rgba(136, 216, 192, .14);
+  --terrain:     var(--ochre-500); /* dados topográficos */
+  --alert:       #E0894A;          /* rust clareado p/ texto: 7.2:1 */
+  --card-light:  #E4E4E0;          /* cards claros (ref. site natureza) */
+  --card-ink:    #2B2E2A;          /* 11.9:1 sobre --card-light */
+  /* marca-texto sobre as imagens de radar (radar-highlight.js): alagamento azul, seca laranja */
+  --hl-alagamento: #2F6BFF;
+  --hl-seca:       #FF8A1F;
+  /* dados das telas do Vale: cheia = água (mint), seca = alerta (rust) */
+  --data-cheia:  var(--sea-300);
+  --data-seca:   #E0894A;
+
+  /* Globo */
+  --globe-ocean-1: #1E5560;
+  --globe-ocean-2: #0A1D24;
+  --globe-land:    #3E4F25;
+  --globe-land-2:  #2B3A1C;
+  --globe-line:    rgba(254, 250, 223, .22);
+  --globe-grat:    rgba(136, 216, 192, .10);
+  --globe-active:  #DCA15D;
+  --globe-hover:   #88D8C0;
+  --globe-glow:    rgba(136, 216, 192, .30);
+  --globe-dim:     rgba(11, 21, 16, .55);
+
+  /* --- Tipografia --------------------------------------------------------- */
+  --font-ui: "Urbanist", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-display: "Dela Gothic One", "Arial Black", Impact, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  /* Login: Space Grotesk Bold (700) nos títulos; DW Sans no texto, com DM Sans como substituta carregada */
+  --font-login-title: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-login-body: "DW Sans", "DM Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* Gradiente do login: só azuis que já estão no sistema (paletas light mode 1 e dark mode 1) */
+  --login-gradient:
+    radial-gradient(120% 90% at 85% 10%, color-mix(in srgb, var(--teal-500) 55%, transparent) 0%, transparent 55%),
+    linear-gradient(160deg, var(--blue-600) 0%, var(--indigo-700) 52%, var(--deep-900) 100%);
+  --fs-xs: 12px; --fs-sm: 13px; --fs-md: 15px; --fs-lg: 18px; --fs-xl: 24px;
+  --fs-2xl: clamp(28px, 3.2vw, 40px);
+  --fs-hero: clamp(34px, 4.6vw, 68px);
+
+  /* --- Espaço, raio, sombra, movimento -------------------------------------- */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --r-sm: 10px; --r-md: 16px; --r-lg: 28px; --r-pill: 999px;
+  --shadow-1: 0 1px 2px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.25);
+  --shadow-2: 0 24px 60px rgba(0,0,0,.45);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-io: cubic-bezier(.65, 0, .35, 1);
+  --t-fast: 160ms; --t-med: 360ms; --t-slow: 720ms;
+
+  --topbar-h: 68px;
+  --rail-w: 180px;
+  --panel-w: 380px;
+
+  color-scheme: dark;
+}
+
+/* --- Tema claro (paletas light mode: silk + earthy + sea from space) ------- */
+:root[data-theme="light"] {
+  --bg:          #F3EFD9;
+  --bg-elev:     #F8F5E4;
+  --surface:     var(--silk-50);
+  --surface-2:   #ECE6CB;
+  --surface-glass: rgba(254, 250, 223, .80);
+  --line:        rgba(39, 54, 23, .14);
+  --line-strong: rgba(39, 54, 23, .28);
+  --text:        #1D2A17;   /* 13.9:1 sobre --bg */
+  --text-muted:  #3E4A2E;   /*  8.9:1 */
+  --text-faint:  #5A6350;   /*  5.6:1 */
+  --accent:      #8F4F14;   /*  6.4:1 — earth/rust escurecido para texto */
+  --accent-ink:  var(--silk-50);
+  --accent-soft: rgba(188, 108, 37, .14);
+  --water:       #1F6E64;   /*  5.8:1 */
+  --water-soft:  rgba(44, 154, 160, .14);
+  --terrain:     #8A6410;
+  --alert:       #9A4A12;
+  --data-cheia:  #1F6E64;
+  --data-seca:   #9A4A12;
+  --globe-ocean-1: #2C8A94;
+  --globe-ocean-2: #17465A;
+  --globe-land:    #5F6C37;
+  --globe-land-2:  #4B5A2A;
+  --globe-line:    rgba(254, 250, 223, .45);
+  --globe-grat:    rgba(254, 250, 223, .16);
+  --globe-glow:    rgba(44, 154, 160, .28);
+  --globe-dim:     rgba(243, 239, 217, .45);
+  color-scheme: light;
+}

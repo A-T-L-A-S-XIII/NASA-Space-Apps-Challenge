@@ -1,0 +1,138 @@
+/* ==========================================================================
+   Tela de login — gradiente azul do sistema (blue-600 → indigo-700 → deep-900,
+   com luz teal-500), mapa do Atlântico Norte em tinta branca por cima.
+   A rolagem (ou o cursor, quando o movimento é "full") leva a câmera:
+   Europa → meio do Atlântico Norte → América do Norte.
+   Desempenho: tudo o que se move usa só transform e opacity; nenhum filtro,
+   blend ou SVG é animado por quadro.
+   Tipografia: Space Grotesk Bold (títulos) + DW Sans/DM Sans (texto).
+   ========================================================================== */
+.view-login { background: var(--login-gradient); background-color: var(--deep-900); color: var(--silk-50); font-family: var(--font-login-body); }
+.view-login h1, .view-login .login-title, .view-login .zi-step b { font-family: var(--font-login-title); font-weight: 700; }
+.login-scroller { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.login-scroller::-webkit-scrollbar { display: none; }
+.login-track { height: 320vh; }
+.login-stage { position: sticky; top: 0; height: 100vh; overflow: hidden; perspective: 1300px; perspective-origin: 38% 48%; }
+
+/* Papel (camada de tinta transparente): dimensionado por JS */
+.paper { position: absolute; left: 0; top: 0; transform-style: preserve-3d; will-change: transform; }
+.paper-map { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .26; user-select: none; -webkit-user-drag: none; }
+
+/* Sombra sob a região que sobe: blur fixo (pintado uma vez), só a opacidade varia */
+.pit {
+  position: absolute; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(11, 15, 46, .55), rgba(11, 15, 46, 0));
+  opacity: var(--w, 0); filter: blur(16px);
+}
+
+/* Camada que salta: só transform + opacity */
+.lift {
+  position: absolute; pointer-events: none; user-select: none; -webkit-user-drag: none;
+  transform: translate(-50%, -50%) translate3d(var(--dx, 0px), var(--dy, 0px), calc(var(--w, 0) * 170px)) rotateX(calc(var(--w, 0) * -8deg)) scale(calc(1 + var(--w, 0) * .04));
+  opacity: calc(.2 + var(--w, 0) * .8);
+  will-change: transform, opacity;
+}
+
+/* Trilha da gota: desenhada uma vez (estática); a gota é um elemento movido por transform */
+.arc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.arc path { fill: none; stroke: rgba(254, 250, 223, .38); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 2 14; }
+.arc-drop {
+  position: absolute; left: 0; top: 0; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
+  background: var(--silk-50); box-shadow: 0 0 0 6px rgba(254, 250, 223, .18);
+  transform: translate3d(var(--x, 0px), var(--y, 0px), 40px); will-change: transform; pointer-events: none;
+}
+
+/* Vinheta estática para dar profundidade e segurar o contraste do cartão */
+.paper-veil { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(110% 90% at 38% 45%, transparent 50%, rgba(11, 15, 46, .55) 100%); }
+
+/* Logo oficial (variante para fundo escuro) */
+.login-brand { position: absolute; top: var(--s5); left: var(--s6); z-index: 3; }
+.login-brand .logo { height: 38px; }
+
+/* Indicador das três paradas */
+.zone-indicator {
+  position: absolute; left: var(--s6); bottom: var(--s6); z-index: 3;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 18px; border-radius: 18px;
+  background: rgba(11, 15, 46, .55); border: 1px solid rgba(254, 250, 223, .14);
+}
+.zone-indicator .zi-hint { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.zone-indicator .zi-hint svg { width: 16px; height: 16px; animation: nudge 2s ease-in-out infinite; }
+@keyframes nudge { 50% { transform: translateY(4px); } }
+.zi-step { display: flex; align-items: center; gap: 12px; font-size: 14px; opacity: .6; transition: opacity var(--t-med); }
+.zi-step .bar { width: 32px; height: 3px; border-radius: 2px; background: var(--sea-300); transform-origin: left; transform: scaleX(.3); transition: transform var(--t-med) var(--ease-out); }
+.zi-step.is-on { opacity: 1; }
+.zi-step.is-on .bar { transform: scaleX(1); }
+
+/* Cartão de login */
+.login-card {
+  position: absolute; z-index: 4; right: clamp(16px, 6vw, 96px); top: 50%; transform: translateY(-50%);
+  width: min(400px, calc(100vw - 32px));
+  padding: var(--s6) var(--s6) var(--s5);
+  border-radius: var(--r-lg);
+  background: rgba(11, 15, 46, .78);
+  border: 1px solid rgba(254, 250, 223, .16);
+  box-shadow: var(--shadow-2);
+  color: var(--silk-50);
+  animation: cardIn 700ms 150ms var(--ease-out) both;
+  max-height: calc(100dvh - 32px); overflow-y: auto; /* o cadastro é mais alto que o login */
+}
+@keyframes cardIn { from { opacity: 0; transform: translateY(calc(-50% + 16px)); } }
+.login-kicker { font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--sea-300); margin: 0 0 var(--s2); }
+.login-title { font-size: 30px; line-height: 1.08; letter-spacing: -.01em; margin: 0 0 var(--s2); }
+.login-sub { margin: 0 0 var(--s5); color: var(--text-muted); font-size: 14.5px; }
+.field { display: block; margin-bottom: var(--s4); }
+.field > span:first-child { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.field input, .field select {
+  width: 100%; height: 48px; padding: 0 var(--s4);
+  border-radius: 14px; border: 1.5px solid rgba(254, 250, 223, .2);
+  background: rgba(254, 250, 223, .06); color: var(--silk-50); font: inherit; font-size: 15px;
+  transition: border-color var(--t-fast);
+}
+.field input::placeholder { color: var(--text-faint); }
+.field select { appearance: none; padding-right: 44px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 22px) 21px, calc(100% - 16px) 21px; background-size: 6px 6px; background-repeat: no-repeat; }
+.field select option { color: var(--deep-900); background: var(--silk-50); }
+.field input:focus, .field select:focus { outline: none; border-color: var(--sea-300); box-shadow: 0 0 0 3px rgba(136, 216, 192, .22); }
+.field-hint { display: block; margin-top: 6px; font-size: 12.5px; color: var(--text-faint); }
+.field input[aria-invalid="true"], .field select[aria-invalid="true"] { border-color: var(--alert); }
+.field-msg { display: block; margin-top: 6px; font-size: 12.5px; font-weight: 500; color: var(--alert); }
+.field-msg:empty { display: none; }
+.reveal { position: relative; display: block; }
+.reveal input { padding-right: 52px; }
+.reveal-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--text-muted); cursor: pointer;
+  display: grid; place-items: center;
+}
+.reveal-btn:hover { background: rgba(254, 250, 223, .08); color: var(--silk-50); }
+.reveal-btn svg { width: 19px; height: 19px; }
+.login-row { display: flex; justify-content: space-between; align-items: center; margin: -4px 0 var(--s5); font-size: 13px; color: var(--text-muted); }
+.login-row label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; min-height: 44px; }
+.login-row input { accent-color: var(--sea-300); width: 16px; height: 16px; }
+.login-row a { display: inline-flex; align-items: center; min-height: 44px; color: var(--sea-300); font-weight: 500; text-underline-offset: 3px; }
+.btn-ink { --_bg: var(--sea-300); --_fg: var(--deep-900); --_bd: transparent; width: 100%; min-height: 50px; font: 700 15px var(--font-login-title); }
+.btn-ink:hover { border-color: transparent; }
+.btn-ink:disabled { opacity: .7; cursor: progress; }
+.btn-outline-ink { --_bg: transparent; --_fg: var(--silk-50); --_bd: rgba(254, 250, 223, .3); width: 100%; margin-top: var(--s2); font-family: var(--font-login-body); }
+.login-note { margin: var(--s3) 0 0; font-size: 13px; color: var(--text-muted); text-align: center; }
+.login-status:not(:empty) { margin: 0 0 var(--s3); padding: var(--s3) var(--s4); border-radius: 14px; font-size: 13.5px;
+  background: rgba(136, 216, 192, .12); border: 1px solid rgba(136, 216, 192, .35); color: var(--silk-50); }
+.login-status a { display: inline-flex; align-items: center; min-height: 44px; color: var(--sea-300); font-weight: 700; text-underline-offset: 3px; }
+.login-status:focus, .login-error:focus, .login-title:focus { outline: none; }
+.login-error { color: var(--alert); font-size: 13px; font-weight: 500; min-height: 18px; margin: -6px 0 var(--s2); }
+.login-foot { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid rgba(254, 250, 223, .12); font-size: 12px; color: var(--text-faint); display: flex; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lift, .paper, .arc-drop { transition: none !important; will-change: auto; }
+  .zone-indicator .zi-hint svg { animation: none; }
+}
+@media (max-width: 760px) {
+  .login-card { top: auto; bottom: 16px; right: 16px; transform: none; padding: var(--s5); animation-name: cardInMobile; }
+  @keyframes cardInMobile { from { opacity: 0; transform: translateY(16px); } }
+  .login-title { font-size: 26px; }
+  .zone-indicator { display: none; }
+  .login-brand { left: var(--s4); top: var(--s4); }
+  .login-brand .logo { height: 30px; }
+}

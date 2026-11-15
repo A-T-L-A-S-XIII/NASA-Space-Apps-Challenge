@@ -1,0 +1,29 @@
+# Blueprint do Render para o FastAPI (Dashboard → New → Blueprint → este repositório).
+# A imagem é o Dockerfile da raiz. Nenhum segredo fica aqui: os com sync: false são pedidos no painel
+# na primeira vez, e os com generateValue o Render sorteia.
+services:
+  - type: web
+    name: water-waltz-api
+    runtime: docker
+    plan: free
+    # Perto da região padrão das funções da Vercel (iad1, Washington), que é quem chama a API
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      # A conta governo ainda é criada no startup; uma senha sorteada evita a padrão do config.py
+      - key: SEED_GOV_PASSWORD
+        generateValue: true
+      - key: DEMO_USER_EMAIL
+        value: demo@waterwaltz.dev
+      - key: DEMO_USER_PASSWORD
+        sync: false
+      - key: DEMO_USER_CITY
+        value: Lajeado
+      # URL do Next na Vercel, ex.: https://water-waltz.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OFFLINE_MODE
+        value: "false"

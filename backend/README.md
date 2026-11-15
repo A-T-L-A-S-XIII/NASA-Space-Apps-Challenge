@@ -85,6 +85,14 @@ Rode o script de novo perto do pitch para os dados ficarem atualizados.
 | GET | `/api/regions/{id}/water-mask` | GeoJSON da mancha d'água (`date=AAAA-MM`), área e cidades atingidas | demo |
 | GET | `/api/regions/{id}/water-mask/frames` | Todos os meses de uma vez (`start=2022-01`, `end`; máx. 120), geometria simplificada | demo |
 | GET | `/api/regions/{id}/compare` | Antes/depois (`before`, `after`), delta, frase e `browse_url` da cena NISAR mais próxima | demo + ASF |
+| GET | `/api/regions/{id}/forecast` | Previsão do tempo por dia: chuva, chance e temperatura (`days=7`, até 16). Não é previsão de enchente | **ao vivo** (Open-Meteo) |
+| GET | `/api/regions/{id}/passes` | As passagens NISAR processadas (`month=AAAA-MM` opcional): água, cheia, seca, trilha, grânulo e URLs das imagens | **NISAR real** |
+| GET | `/api/regions/{id}/passes/{n}/geojson` | Polígonos de cheia e seca de uma passagem, com área em km² (UTM) | **NISAR real** |
+| GET | `/api/regions/{id}/municipalities` | Área de cheia e seca por município no mês (`month=AAAA-MM`), pelo centroide de cada polígono | **NISAR real** + IBGE |
+| GET | `/api/regions/{id}/municipalities/geojson` | Malha municipal do IBGE | IBGE |
+| GET | `/api/regions/{id}/export` | Arquivo das passagens (`format=json\|csv\|geojson`, `month` opcional), com procedência e sem dado de usuário | **NISAR real** |
+| GET | `/api/static/nisar/{pasta}/{miniatura.png\|slide.png}` | Imagens das passagens (as URLs vêm em `/passes`) | **NISAR real** |
+| GET | `/api/places?q=` | Busca de municípios (IBGE, local) e bairros (Nominatim, a partir de 3 letras); `region_id` opcional | IBGE + **ao vivo** (OSM) |
 | GET | `/api/climate/enso` | ONI da NOAA com a fase: El Niño, La Niña ou Neutro (`start` opcional) | **ao vivo** |
 | GET | `/api/explain` | Textos para leigos (`{id, title, summary, body, icon}`) | fixo |
 | GET | `/api/explain/{topic}` | `sar`, `agua-no-radar`, `nisar`, `el-nino`, `la-nina`, `como-ler-o-mapa` | fixo |
@@ -107,6 +115,9 @@ estão em `frontend-api.ts`.
 | **ASF DAAC (NISAR)**, ao vivo | `/scenes`, `/status`, `/compare` | Catálogo público, sem login. Cache de 30 min. Se o ASF falhar: snapshot com `live: false` e `snapshot_date`; sem snapshot, lista vazia e `error`. |
 | **NOAA CPC (ONI)**, ao vivo | `/climate/enso`, `/timeline`, `/status` | Arquivo `oni.ascii.txt`. Cache de 6 h. Se a NOAA falhar: último cache com `live: false`, senão o snapshot, senão série vazia com `error`. |
 | **DemoProvider**, demo | `/timeline`, `/water-mask`, `/compare`, `/status` | Valores ilustrativos e determinísticos com `"source": "demo"` e `"note"`. Seguem a cronologia real (estiagem de 2022 ao início de 2023; enchentes de set/2023, nov/2023 e mai/2024), mas **não são medições**: o NISAR só entrou em operação depois de 2025. |
+| **Open-Meteo**, ao vivo | `/forecast` | Previsão do tempo no centro da região, sem chave. Cache de 30 min. Se falhar: último cache com `live: false`, senão `days: []` com `error`; depois de uma falha espera 5 min para tentar de novo. |
+| **Nominatim (OpenStreetMap)**, ao vivo | `/places` | Bairros e ruas dentro da caixa da região. User-Agent do app, no máximo 1 pedido por segundo e cache de 24 h. Se falhar, os municípios do IBGE continuam saindo e `error` explica. |
+| **Passagens NISAR**, processadas antes | `/passes`, `/municipalities`, `/export`, `/api/static/nisar` | Lê `Fotos/nisar_taquari_50` (`NISAR_FOTOS_DIR`): `catalogo.json` e, por passagem, `area_cheia_seca.geojson`, `miniatura.png` e `slide.png`, com `"source": "nisar"`. Sem o catálogo, 404. A malha municipal (`app/data/vale_municipios.geojson`) vem do IBGE via `pipeline/build_vale_municipios.py`. |
 | **Sentinel-1**, processado antes | `/recurrence` | Arquivo gerado por `scripts/process_sentinel1.py` no Earth Engine, com `"source": "sentinel-1"`. Sem o arquivo, 404. |
 | **Radar processado** | `/api/timeline`, `/api/layers`... | Arquivos gerados antes pelo pipeline em `data/demo/`. Com `data/fixtures/`, as respostas vêm com `"fixture": true`. |
 
@@ -144,7 +155,7 @@ A API sobe com `uvicorn` na porta `$PORT`, que as duas plataformas definem sozin
 |---|---|
 | `JWT_SECRET` | `python -c "import secrets; print(secrets.token_hex(32))"` |
 | `SEED_GOV_EMAIL`, `SEED_GOV_PASSWORD` | Conta governo inicial (senha forte) |
-| `CORS_ORIGINS` | Domínio do frontend na Vercel, ex.: `https://water-waltz.vercel.app` (vírgula para vários) |
+| `CORS_ORIGINS` | URL do Next.js em produção, ex.: `https://water-waltz.vercel.app` (vírgula para várias). Quem chama a API é o servidor do Next, não o navegador |
 | `CORS_ORIGIN_REGEX` | Opcional, para os previews da Vercel: `https://water-waltz.*\.vercel\.app` |
 | `OFFLINE_MODE` | `false` (ou `true` no pitch, se a rede do evento for ruim) |
 

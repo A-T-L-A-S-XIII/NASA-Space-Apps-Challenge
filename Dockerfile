@@ -19,8 +19,10 @@ COPY pipeline/requirements.txt pipeline/requirements.txt
 RUN pip install -r backend/requirements.txt -r pipeline/requirements.txt
 
 # A API lê data/aoi.geojson e pipeline/ a partir da raiz do repositório (app/services/store.py)
+# e as 19 passagens NISAR de Fotos/nisar_taquari_50 (NISAR_FOTOS_DIR, app/services/passes.py)
 COPY data data
 COPY pipeline pipeline
+COPY Fotos Fotos
 COPY backend backend
 
 # Usuário sem privilégios; ele precisa escrever o SQLite em backend/

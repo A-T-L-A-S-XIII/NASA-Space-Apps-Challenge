@@ -1,0 +1,309 @@
+/* ==========================================================================
+   Base + componentes reutilizáveis (usados no login, na Aba 1 e na Aba 2)
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  transition: background-color var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out);
+}
+button, input { font: inherit; color: inherit; }
+img { display: block; max-width: 100%; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+.sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+
+/* --- Views / transições entre telas ---------------------------------------- */
+.view { position: fixed; inset: 0; }
+.view-enter { animation: viewIn var(--t-slow) var(--ease-out) both; }
+@keyframes viewIn { from { opacity: 0; transform: scale(1.015); } to { opacity: 1; transform: none; } }
+.tab-enter { animation: tabIn 520ms var(--ease-out) both; }
+@keyframes tabIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Ink wipe: transição login -> app */
+.ink-wipe {
+  position: fixed; inset: 0; z-index: 90; pointer-events: none;
+  background: var(--forest-950);
+  clip-path: circle(0 at var(--x, 50%) var(--y, 50%));
+  transition: clip-path 900ms var(--ease-io);
+}
+.ink-wipe.is-on { clip-path: circle(150% at var(--x, 50%) var(--y, 50%)); }
+
+/* --- Logo / ícone ------------------------------------------------------------ */
+.brand { display: inline-flex; align-items: center; gap: var(--s3); text-decoration: none; }
+/* Logo oficial: altura fixa, largura pela proporção do arquivo */
+.brand .logo { display: block; height: 30px; width: auto; }
+.brand--auto .logo--on-light { display: none; }
+:root[data-theme="light"] .brand--auto .logo--on-dark { display: none; }
+:root[data-theme="light"] .brand--auto .logo--on-light { display: block; }
+.brand-mark { width: 40px; height: 40px; flex: none; }
+.brand-mark .leaf { fill: currentColor; transform-origin: 50% 50%; }
+.brand:hover .brand-mark { animation: waltz 1.6s var(--ease-io); }
+@keyframes waltz { 50% { transform: rotate(-12deg) scale(.96); } }
+.brand-name { font-weight: 700; letter-spacing: .02em; font-size: 17px; line-height: 1.05; }
+.brand-name small { display: block; font-weight: 500; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-faint); }
+
+/* --- Botões ------------------------------------------------------------------ */
+.btn {
+  --_bg: var(--surface-2); --_fg: var(--text); --_bd: var(--line-strong);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  min-height: 44px; padding: 0 var(--s5);
+  border-radius: var(--r-pill); border: 1px solid var(--_bd);
+  background: var(--_bg); color: var(--_fg);
+  font-weight: 600; letter-spacing: .01em; cursor: pointer; text-decoration: none;
+  transition: transform var(--t-fast) var(--ease-out), background-color var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.btn:hover { transform: translateY(-1px); border-color: var(--text-faint); }
+.btn:active { transform: translateY(0) scale(.98); }
+.btn-primary { --_bg: var(--accent); --_fg: var(--accent-ink); --_bd: transparent; box-shadow: 0 8px 24px var(--accent-soft); }
+.btn-primary:hover { box-shadow: 0 10px 30px rgba(220,161,93,.32); border-color: transparent; }
+.btn-ghost { --_bg: transparent; }
+.btn-icon { width: 44px; padding: 0; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+
+/* Botão redondo branco com grade de pontos (ref. cards do site natureza) */
+.dot-btn {
+  width: 52px; height: 52px; border-radius: 50%; border: 0; cursor: pointer;
+  background: #fff; color: #2B2E2A; display: grid; place-items: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+.dot-btn:hover { transform: scale(1.06) rotate(45deg); }
+.dot-btn svg { width: 18px; height: 18px; }
+
+/* --- Chips / badges ---------------------------------------------------------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: 600; letter-spacing: .04em;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--text-muted);
+}
+.chip-water { background: var(--water-soft); color: var(--water); border-color: transparent; }
+.chip-accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.chip .dot.live { animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.7); } }
+.badge-demo {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--alert); border: 1px dashed currentColor; border-radius: 6px; padding: 2px 7px;
+}
+.kicker { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-faint); }
+
+/* --- Topbar (compartilhada pelas abas) --------------------------------------- */
+.topbar {
+  position: absolute; top: 0; left: 0; right: 0; height: var(--topbar-h); z-index: 20;
+  display: flex; align-items: center; gap: var(--s5);
+  padding: 0 var(--s5);
+  pointer-events: none;
+}
+.topbar > * { pointer-events: auto; }
+.tabs {
+  display: flex; gap: 4px; padding: 4px; margin-left: var(--s4);
+  border-radius: var(--r-pill); background: var(--surface-glass); border: 1px solid var(--line);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.tab-btn {
+  position: relative; border: 0; background: transparent; cursor: pointer;
+  padding: 9px 18px; border-radius: var(--r-pill);
+  font-weight: 600; font-size: var(--fs-sm); color: var(--text-muted);
+  transition: color var(--t-fast), background-color var(--t-fast);
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn[aria-selected="true"] { background: var(--text); color: var(--bg); }
+.tab-btn .n { font-family: var(--font-mono); font-size: 11px; opacity: .6; margin-right: 6px; }
+.topbar-spacer { flex: 1; }
+.topbar-tools {
+  display: flex; align-items: center; gap: 2px; padding: 4px; margin-right: calc(var(--rail-w) + var(--s2));
+  border-radius: var(--r-pill); background: var(--surface-glass); border: 1px solid var(--line);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.topbar-tools .btn-icon { width: 40px; min-height: 40px; border-color: transparent; }
+.is-explore .topbar-tools { background: transparent; border-color: transparent; }
+.is-explore .topbar-tools { margin-right: 0; }
+.avatar {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong);
+  background: linear-gradient(135deg, var(--moss-500), var(--sea-600)); color: var(--silk-50);
+  display: grid; place-items: center; font-weight: 700; font-size: 14px; cursor: pointer;
+}
+
+/* --- Seletor de modo de dados (Lite / Aprofundado) -------------------------- */
+.mode-switch { display: inline-flex; padding: 3px; margin-right: 4px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line); }
+.mode-switch button {
+  border: 0; background: transparent; cursor: pointer; padding: 7px 12px; border-radius: var(--r-pill);
+  font-size: 12.5px; font-weight: 700; color: var(--text-muted); transition: color var(--t-fast), background-color var(--t-fast);
+}
+.mode-switch button:hover { color: var(--text); }
+.mode-switch button[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); }
+.deep-only { display: none !important; }
+:root[data-mode="aprofundado"] .deep-only { display: revert !important; }
+
+/* --- Toast ------------------------------------------------------------------ */
+.toast {
+  position: fixed; z-index: 85; left: 50%; bottom: var(--s5); max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 18px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line-strong); color: var(--text);
+  font-size: 14px; box-shadow: var(--shadow-2);
+  opacity: 0; transform: translate(-50%, 12px); pointer-events: none;
+  transition: opacity var(--t-med) var(--ease-out), transform var(--t-med) var(--ease-out);
+}
+.toast.is-on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast a { color: var(--accent); font-weight: 700; }
+
+/* --- Tooltip ---------------------------------------------------------------- */
+.tooltip {
+  position: fixed; z-index: 80; pointer-events: none;
+  padding: 8px 12px; border-radius: 12px; max-width: 260px;
+  background: var(--surface-glass); border: 1px solid var(--line-strong); color: var(--text);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: var(--fs-sm); box-shadow: var(--shadow-1);
+  transform: translate(14px, 14px);
+}
+.tooltip strong { display: block; font-size: var(--fs-md); }
+.tooltip .muted { color: var(--text-faint); font-size: var(--fs-xs); }
+.tooltip .go { color: var(--accent); font-weight: 600; font-size: var(--fs-xs); }
+
+/* --- Modal / diálogo de confirmação ----------------------------------------- */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 70;
+  display: grid; place-items: center; padding: var(--s4);
+  background: rgba(6, 12, 9, .62);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: fadeIn var(--t-med) var(--ease-out) both;
+}
+.modal-backdrop.is-leaving { animation: fadeOut 220ms ease both; }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes fadeOut { to { opacity: 0; } }
+.modal {
+  width: min(520px, 100%); overflow: hidden;
+  border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-2);
+  animation: modalIn 520ms var(--ease-out) both;
+}
+.modal-backdrop.is-leaving .modal { animation: modalOut 220ms ease both; }
+@keyframes modalIn { from { opacity: 0; transform: translateY(24px) scale(.96); } }
+@keyframes modalOut { to { opacity: 0; transform: translateY(12px) scale(.98); } }
+.modal-media { position: relative; height: 168px; background: var(--card-light) center/cover no-repeat; }
+.modal-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, var(--surface)); }
+.modal-body { padding: 0 var(--s6) var(--s6); margin-top: -28px; position: relative; }
+.modal h2 { margin: var(--s2) 0 var(--s3); font-size: var(--fs-xl); line-height: 1.2; font-weight: 700; }
+.modal p { margin: 0 0 var(--s4); color: var(--text-muted); }
+.modal .path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 var(--s5); font-size: var(--fs-sm); color: var(--text-faint); }
+.modal .path b { color: var(--text); font-weight: 600; }
+.modal .path svg { width: 12px; height: 12px; opacity: .6; }
+.modal-actions { display: flex; gap: var(--s3); justify-content: flex-end; flex-wrap: wrap; }
+
+/* --- Media card (ref. "Nature's beauty is boundless") ----------------------- */
+.media-card {
+  position: relative; overflow: hidden; isolation: isolate;
+  border-radius: var(--r-lg); background: var(--card-light); color: var(--card-ink);
+  min-height: 220px; padding: var(--s5);
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.media-card img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 60%;
+  z-index: -1; transition: transform 1.2s var(--ease-out);
+}
+.media-card::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(105deg, rgba(228,228,224,.95) 0%, rgba(228,228,224,.75) 38%, rgba(228,228,224,0) 70%); }
+.media-card:hover img { transform: scale(1.04); }
+.media-card .mc-kicker { font-size: var(--fs-sm); font-weight: 500; }
+.media-card .mc-title { font-size: 26px; line-height: 1.12; font-weight: 600; margin: 4px 0 0; max-width: 62%; }
+.media-card .dot-btn { position: absolute; right: var(--s4); bottom: var(--s4); }
+
+/* --- Metric tile ------------------------------------------------------------- */
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+.metric {
+  padding: var(--s3) var(--s4); border-radius: var(--r-md);
+  background: var(--surface-2); border: 1px solid var(--line);
+  min-width: 0;
+}
+.metric .m-label { font-size: var(--fs-xs); color: var(--text-faint); display: flex; align-items: center; gap: 6px; }
+.metric .m-label svg { width: 14px; height: 14px; flex: none; }
+.metric .m-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; white-space: nowrap; }
+.metric .m-value small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 2px; }
+.metric .m-delta { font-size: var(--fs-xs); font-weight: 600; }
+.metric[data-kind="water"] .m-label svg { color: var(--water); }
+.metric[data-kind="terrain"] .m-label svg { color: var(--terrain); }
+.metric[data-kind="sar"] .m-label svg { color: var(--accent); }
+.up { color: var(--alert); } .down { color: var(--water); } .flat { color: var(--text-faint); }
+
+.section-title { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); margin: var(--s5) 0 var(--s3); }
+.section-title h3 { margin: 0; font-size: var(--fs-sm); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
+
+/* --- News item (rail na Aba 1 e lista no nível município) --------------------- */
+.news-item { display: block; text-decoration: none; padding: var(--s3) 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.news-item:last-child { border-bottom: 0; }
+.news-item .ni-thumb { width: 100%; aspect-ratio: 16 / 10; border-radius: 12px; object-fit: cover; margin-bottom: var(--s2); background: var(--surface-2); }
+.news-item .ni-meta { font-size: 11px; color: var(--text-faint); display: flex; gap: 6px; flex-wrap: wrap; }
+.news-item .ni-tag { color: var(--water); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.news-item .ni-title { font-size: 13.5px; font-weight: 600; line-height: 1.3; margin: 3px 0 0; color: var(--text); }
+.news-item:hover .ni-title { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+
+/* --- Charts (SVG inline) ----------------------------------------------------- */
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .axis { stroke: var(--line-strong); }
+.chart text { fill: var(--text-faint); font-size: 10px; font-family: var(--font-ui); }
+.chart .bar { fill: var(--water); }
+.chart .bar.hi { fill: var(--accent); }
+.chart .area { fill: url(#terrainGrad); }
+.chart .line { fill: none; stroke: var(--terrain); stroke-width: 2; }
+.chart .river { fill: var(--water); opacity: .9; }
+.chart .obs-yes { fill: var(--water); }
+.chart .obs-no { fill: none; stroke: var(--text-faint); stroke-width: 1.5; }
+
+/* --- Legend ------------------------------------------------------------------ */
+.legend { display: flex; align-items: center; gap: var(--s2); font-size: 11px; color: var(--text-faint); }
+.legend .ramp { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #2B3A1C, #40826D, #88D8C0); }
+
+/* --- Scrollbars discretos ---------------------------------------------------- */
+.scroll { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+/* --- Marca-texto de alagamento/seca sobre imagens de radar (radar-highlight.js) --- */
+.radar-hl { pointer-events: none; background: transparent !important; mix-blend-mode: multiply; }
+
+/* --- Etiqueta da fonte do dado ------------------------------------------------ */
+.src-tag {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--r-pill);
+  font-size: 11.5px; font-weight: 600; letter-spacing: .02em; line-height: 1.4; white-space: nowrap;
+  border: 1px solid transparent; animation: fadeIn var(--t-med) var(--ease-out) both;
+}
+.src-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.src-real { background: var(--water-soft); color: var(--water); }
+.src-demo { background: var(--accent-soft); color: var(--accent); }
+.src-open { background: var(--surface-2); color: var(--text-muted); border-color: var(--line); }
+.src-offline { background: transparent; color: var(--text-muted); border: 1px dashed var(--line-strong); }
+
+/* --- Selo ENSO (El Niño / La Niña) --------------------------------------------- */
+.enso-slot:empty { display: none; }
+.enso { position: relative; display: inline-flex; }
+.enso[data-fase="la-nina"] { --_c: var(--water); }
+.enso[data-fase="el-nino"] { --_c: var(--accent); }
+.enso[data-fase="neutro"]  { --_c: var(--text-muted); }
+.enso-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  border-radius: var(--r-pill); border: 1px solid var(--line); cursor: pointer;
+  background: var(--surface-glass); color: var(--text); font: inherit; font-weight: 700; font-size: var(--fs-sm);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transition: border-color var(--t-fast); animation: fadeIn var(--t-med) var(--ease-out) both;
+}
+.enso-btn:hover, .enso-btn[aria-expanded="true"] { border-color: var(--line-strong); }
+.enso-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--_c); }
+.enso-oni { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--_c); }
+.enso-panel {
+  position: absolute; z-index: 7; right: 0; top: calc(100% + 8px); width: min(320px, calc(100vw - 32px)); padding: var(--s4);
+  border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line-strong); color: var(--text);
+  box-shadow: var(--shadow-2); animation: fadeIn var(--t-med) var(--ease-out) both; /* fundo opaco: texto AA sobre qualquer tela */
+}
+.enso-title { display: block; font-size: 15px; margin-bottom: var(--s2); }
+.enso-text { margin: 0 0 var(--s2); font-size: 13px; color: var(--text-muted); }
+.enso-note { margin: 0; font-size: 11.5px; color: var(--text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
