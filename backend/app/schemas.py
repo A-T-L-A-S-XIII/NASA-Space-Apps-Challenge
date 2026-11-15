@@ -575,3 +575,142 @@ class Recurrence(BaseModel):
     cities: list[CityRecurrence]
     monthly: list[MonthlyFlood] = Field(description="Só os meses com passagem, do mais antigo ao mais recente")
     geojson: FeatureCollection | None = Field(description="Manchas por classe; vazio com geometry=false")
+
+
+# ---------------------------------------------------------------- previsão
+class ForecastDay(BaseModel):
+    date: str = Field(description="AAAA-MM-DD")
+    rain_mm: float | None = Field(description="Chuva prevista no dia, em mm")
+    rain_probability_pct: float | None = Field(description="Maior chance de chuva no dia, em %")
+    tmin_c: float | None
+    tmax_c: float | None
+
+
+class Forecast(BaseModel):
+    region_id: str
+    source: Literal["open-meteo"]
+    live: bool = Field(description="False quando a Open-Meteo não respondeu (devolve o último cache, se houver)")
+    kind: str = Field(description="Lembra que é previsão do tempo, não previsão de enchente")
+    lat: float
+    lon: float
+    generated_at: str | None = Field(description="Quando a previsão foi buscada (UTC)")
+    total_rain_mm: float
+    summary: str = Field(description="Frase curta para o cidadão")
+    days: list[ForecastDay]
+    error: str | None
+
+
+# ------------------------------------------------------------------ lugares
+class Place(BaseModel):
+    name: str
+    kind: str = Field(description='"município", "bairro" ou o tipo do OpenStreetMap (ex.: road)')
+    lat: float
+    lon: float
+    inside_coverage: bool = Field(description="Fica dentro da área observada pelas passagens NISAR processadas")
+    source: Literal["ibge", "osm"]
+
+
+class Places(BaseModel):
+    q: str
+    region_id: str
+    source: Literal["ibge+osm"]
+    items: list[Place] = Field(description="Municípios primeiro; no máximo 12")
+    error: str | None = Field(description="Preenchido quando a busca de bairros (Nominatim) falhou")
+
+
+# --------------------------------------------------- passagens NISAR (Fotos)
+class PassImages(BaseModel):
+    radar: str | None = Field(description="URL relativa da miniatura do radar (cobre exatamente `coverage`)")
+    slide: str | None = Field(description="URL relativa do painel do processamento")
+
+
+class NisarPass(BaseModel):
+    n: int
+    date: str = Field(description="AAAA-MM-DD")
+    track: str = Field(description="Trilha, ex.: 053_D_103. Só compare passagens da mesma trilha")
+    polarization: str
+    passes_in_track: int | None
+    water_km2: float = Field(description="Toda a água vista pelo radar na área processada")
+    flood_km2: float = Field(description="Água fora do normal (cheia)")
+    dry_km2: float = Field(description="Falta de água em relação ao normal (seca)")
+    in_flood_window: bool
+    granule: str
+    images: PassImages
+    geojson_url: str
+
+
+class Passes(BaseModel):
+    region_id: str
+    source: Literal["nisar"]
+    data_source: str | None = Field(description="Origem dos grânulos, ex.: NASA/ISRO NISAR via ASF DAAC")
+    note: str
+    month: str | None
+    months: list[str]
+    coverage: BBox = Field(description="Área processada [oeste, sul, leste, norte]")
+    count: int
+    passes: list[NisarPass] = Field(description="Da mais antiga para a mais recente")
+
+
+class PassFeatureProperties(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    class_: Literal["cheia", "seca"] = Field(alias="class", description="cheia = água fora do normal; seca = falta")
+    date: str
+    track: str
+    n: int
+    area_km2: float = Field(description="Área do polígono, medida em UTM")
+
+
+class PassFeature(BaseModel):
+    type: Literal["Feature"]
+    geometry: dict
+    properties: PassFeatureProperties
+
+
+class PassGeoJSON(BaseModel):
+    type: Literal["FeatureCollection"]
+    region_id: str
+    source: Literal["nisar"]
+    date: str
+    note: str
+    features: list[PassFeature]
+
+
+# ---------------------------------------------------------------- municípios
+class AreaByDate(BaseModel):
+    date: str
+    flood_km2: float
+    dry_km2: float
+
+
+class MunicipalityArea(BaseModel):
+    id: str = Field(description="Código IBGE")
+    name: str
+    touches_coverage: bool = Field(description="O município toca a área processada")
+    flood_km2: float
+    dry_km2: float
+    per_date: list[AreaByDate]
+
+
+class FloodDryArea(BaseModel):
+    flood_km2: float
+    dry_km2: float
+
+
+class MunicipalitiesArea(BaseModel):
+    region_id: str
+    source: Literal["nisar"]
+    mesh_source: Literal["ibge"]
+    month: str
+    dates: list[str]
+    method: str
+    outside_municipalities: FloodDryArea
+    municipalities: list[MunicipalityArea] = Field(description="Mais cheia primeiro")
+
+
+class MunicipalityMesh(BaseModel):
+    type: Literal["FeatureCollection"]
+    region_id: str
+    source: Literal["ibge"]
+    attribution: str | None
+    features: list[dict] = Field(description="Polígonos com properties {id, name}")

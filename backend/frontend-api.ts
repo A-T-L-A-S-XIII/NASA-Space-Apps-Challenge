@@ -2,7 +2,7 @@
  * Water Waltz API: types e client fetch para o Next.js.
  *
  * Espelha os modelos de backend/app/schemas.py (regiões, água, clima,
- * explicações, status e autenticação). As rotas de radar processado
+ * previsão, busca, passagens NISAR, municípios, explicações, status e autenticação). As rotas de radar processado
  * (/api/timeline, /api/layers...) já têm types em frontend/lib/types.ts.
  *
  * Uso:
@@ -327,6 +327,145 @@ export interface CityStatus {
   alerts: Alert[];
 }
 
+// ----------------------------------------------------------------- previsão
+export interface ForecastDay {
+  /** AAAA-MM-DD */
+  date: string;
+  rain_mm: number | null;
+  rain_probability_pct: number | null;
+  tmin_c: number | null;
+  tmax_c: number | null;
+}
+
+/** Previsão do tempo da Open-Meteo. Não é previsão de enchente: mostre sempre o `kind`. */
+export interface Forecast {
+  region_id: string;
+  source: "open-meteo";
+  /** false quando a Open-Meteo não respondeu (vem o último cache, se houver, e `error`) */
+  live: boolean;
+  kind: string;
+  lat: number;
+  lon: number;
+  generated_at: string | null;
+  total_rain_mm: number;
+  summary: string;
+  days: ForecastDay[];
+  error: string | null;
+}
+
+// ------------------------------------------------------------------ lugares
+export interface Place {
+  name: string;
+  /** "município", "bairro" ou o tipo do OpenStreetMap (ex.: "road") */
+  kind: string;
+  lat: number;
+  lon: number;
+  /** Dentro da área observada pelas passagens NISAR processadas */
+  inside_coverage: boolean;
+  source: "ibge" | "osm";
+}
+
+export interface Places {
+  q: string;
+  region_id: string;
+  source: "ibge+osm";
+  items: Place[];
+  /** Preenchido quando a busca de bairros (Nominatim) falhou; os municípios continuam vindo */
+  error: string | null;
+}
+
+// --------------------------------------------------------- passagens NISAR
+export interface PassImages {
+  /** URL relativa à raiz da API (ex.: /api/static/nisar/img_07_2026-07-23/miniatura.png); cobre `coverage` */
+  radar: string | null;
+  slide: string | null;
+}
+
+export interface NisarPass {
+  n: number;
+  /** AAAA-MM-DD */
+  date: string;
+  /** Só compare passagens da mesma trilha */
+  track: string;
+  polarization: string;
+  passes_in_track: number | null;
+  water_km2: number;
+  /** Água fora do normal */
+  flood_km2: number;
+  /** Falta de água em relação ao normal */
+  dry_km2: number;
+  in_flood_window: boolean;
+  granule: string;
+  images: PassImages;
+  geojson_url: string;
+}
+
+export interface Passes {
+  region_id: string;
+  source: "nisar";
+  data_source: string | null;
+  note: string;
+  month: string | null;
+  months: string[];
+  /** Área processada [oeste, sul, leste, norte] */
+  coverage: BBox;
+  count: number;
+  passes: NisarPass[];
+}
+
+export interface PassFeature {
+  type: "Feature";
+  geometry: GeoJSONGeometry;
+  properties: { class: "cheia" | "seca"; date: string; track: string; n: number; area_km2: number };
+}
+
+export interface PassGeoJSON {
+  type: "FeatureCollection";
+  region_id: string;
+  source: "nisar";
+  date: string;
+  note: string;
+  features: PassFeature[];
+}
+
+// --------------------------------------------------------------- municípios
+export interface AreaByDate {
+  date: string;
+  flood_km2: number;
+  dry_km2: number;
+}
+
+export interface MunicipalityArea {
+  /** Código IBGE */
+  id: string;
+  name: string;
+  touches_coverage: boolean;
+  flood_km2: number;
+  dry_km2: number;
+  per_date: AreaByDate[];
+}
+
+export interface MunicipalitiesArea {
+  region_id: string;
+  source: "nisar";
+  mesh_source: "ibge";
+  month: string;
+  dates: string[];
+  method: string;
+  outside_municipalities: { flood_km2: number; dry_km2: number };
+  municipalities: MunicipalityArea[];
+}
+
+export interface MunicipalityMesh {
+  type: "FeatureCollection";
+  region_id: string;
+  source: "ibge";
+  attribution: string | null;
+  features: { type: "Feature"; geometry: GeoJSONGeometry; properties: { id: string; name: string } }[];
+}
+
+export type ExportFormat = "json" | "csv" | "geojson";
+
 // --------------------------------------------------------------------- erros
 /** Erro da API. `detail` vem em português, pronto para mostrar ao usuário. */
 export class ApiError extends Error {
@@ -421,6 +560,23 @@ export function createApi(baseUrl = "http://localhost:8000", getToken?: () => st
 
     // Clima
     enso: (start?: string) => request<Enso>("/api/climate/enso", { query: { start } }),
+    forecast: (id: string, days?: number) => request<Forecast>(`${region(id)}/forecast`, { query: { days } }),
+
+    // Busca
+    places: (q: string, regionId = "vale-do-taquari") =>
+      request<Places>("/api/places", { query: { q, region_id: regionId } }),
+
+    // Passagens NISAR processadas
+    passes: (id: string, month?: string) => request<Passes>(`${region(id)}/passes`, { query: { month } }),
+    passGeoJSON: (id: string, n: number) => request<PassGeoJSON>(`${region(id)}/passes/${n}/geojson`),
+    municipalities: (id: string, month: string) =>
+      request<MunicipalitiesArea>(`${region(id)}/municipalities`, { query: { month } }),
+    municipalityMesh: (id: string) => request<MunicipalityMesh>(`${region(id)}/municipalities/geojson`),
+    /** URL absoluta de um caminho relativo da API (imagens das passagens, links de exportação). */
+    url: (path: string) => `${base}${path}`,
+    /** Link da exportação (arquivo com Content-Disposition; só dados públicos do radar). */
+    exportUrl: (id: string, format: ExportFormat = "json", month?: string) =>
+      `${base}${region(id)}/export?format=${format}${month ? `&month=${encodeURIComponent(month)}` : ""}`,
 
     // Explicações
     explain: () => request<ExplainTopic[]>("/api/explain"),

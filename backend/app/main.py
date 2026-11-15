@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.db import SessionLocal, create_tables
-from app.routers import alerts, api, auth, climate, explain, regions, water
+from app.routers import alerts, api, auth, climate, explain, forecast, passes, places, regions, water
 from app.schemas import Health
 from app.services.store import DatasetMissing
 from app.services.alerts import ensure_demo_alerts
@@ -33,6 +33,10 @@ TAGS = [
     {"name": "Alertas", "description": "Alertas do governo (criar e desativar só com role `governo`), "
                                        "exportação em CSV e status da cidade do cidadão."},
     {"name": "Clima", "description": "Índice ONI (El Niño / La Niña) ao vivo da NOAA."},
+    {"name": "Previsão", "description": "Previsão do tempo da Open-Meteo (não é previsão de enchente)."},
+    {"name": "Busca", "description": "Municípios do IBGE e bairros do OpenStreetMap (Nominatim)."},
+    {"name": "Passagens NISAR", "description": "As passagens NISAR já processadas (cheia e seca), imagens, "
+                                              "área por município e exportação."},
     {"name": "Explicações", "description": "Textos em português simples para o cidadão."},
     {"name": "Radar processado", "description": "Camadas e estatísticas de radar processadas antes, fora da API "
                                                 "(`data/demo` ou `data/fixtures`)."},
@@ -78,6 +82,10 @@ app.include_router(regions.router)
 app.include_router(water.router)
 app.include_router(climate.router)
 app.include_router(explain.router)
+app.include_router(forecast.router)
+app.include_router(places.router)
+app.include_router(passes.router)
+app.include_router(passes.static_router)
 app.include_router(alerts.router)
 app.include_router(api.router)
 
