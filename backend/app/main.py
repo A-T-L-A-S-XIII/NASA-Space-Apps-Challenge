@@ -1,0 +1,49 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.config import settings
+from app.db import SessionLocal, create_tables
+from app.routers import auth
+from app.services.users import ensure_seed_gov
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_tables()
+    with SessionLocal() as db:
+        ensure_seed_gov(db, settings.seed_gov_name, settings.seed_gov_email, settings.seed_gov_password)
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request, exc: RequestValidationError):
+    # Mensagem principal em português; detalhes técnicos ficam em "errors"
+    errors = [{k: v for k, v in e.items() if k != "ctx"} for e in exc.errors()]
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Dados inválidos", "errors": jsonable_encoder(errors)},
+    )
+
+
+app.include_router(auth.router)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
