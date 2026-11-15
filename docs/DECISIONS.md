@@ -36,6 +36,31 @@ Status: **decided** (team), **to confirm** (decided with a detail still open), *
 | D-11 | Backend: **keep Hugo's work and fit it into the project backend**. His authentication (SQLite, JWT, seed government account), regions and ASF search were brought from branch `backend` (up to `cf89048`) into `backend/` alongside the radar routes; Hugo continues on the project branch. | Reopens D-04 (demo login only, no personal data on the server) and the "static, no server" part of D-08. |
 | D-05 | Name: **Water Waltz** (final). | Renamed in README, NOTICE, LICENSE, app title. |
 
+## Answers of 2026-11-15, second round (coordinator)
+
+| ID | Decision | Effect |
+|---|---|---|
+| D-12 | Video: up to 1 min. Slides: no limit. | Confirms D-08; checklist updated. |
+| D-13 | Login: demo only ("Continue as demo user"). Public site: static, no server. **Confirmed.** | Confirms D-04 and the static part of D-08 over D-11. Hugo's authentication stays in `backend/` but is not used by the public demo. |
+| D-15 | Assistance disclosure only in the README section "AI assistance". The trace scan in `docs/SUBMISSION_CHECKLIST.md` stays and must print nothing. | Line removed from `NOTICE`. |
+
+## D-14 (revised by the team) — Data sources
+
+NASA data is the core. **NISAR GCOV is the only source of candidate water.** Other open sources are context only, never a source of water, and all appear in the README (Other data, References) and in the References field of the submission. gROADS was discarded (network from the 1980s–2010s, too old).
+
+1. **Basemap.** Keep OpenStreetMap tiles under the official tile usage policy: exact URL `https://tile.openstreetmap.org/{z}/{x}/{y}.png`; attribution "© OpenStreetMap contributors" with a link to https://www.openstreetmap.org/copyright, always visible on the map, never behind a menu or button; no downloading, storing or pre-loading of tiles, no offline tiles; no restrictive Referrer-Policy. Add the NISAR GCOV "before" image (greyscale) as a background option. Offline, the app works with the area outline and radar layers only.
+2. **Localities.** Replace hand-typed coordinates (e.g. `backend/app/data/regions.py`) with IBGE data (municipal seats and localities) clipped to the study area, recording product, version and access date (version and licence *[to verify]*). Test localities become synthetic ("Test Town A", "Test Town B"), used only in tests, never shown in the app.
+3. **Access ("affected without being flooded").**
+   - Roads: current OpenStreetMap roads clipped to the area, main road classes only, extract date recorded. The distributed road file is derived from OSM and is under the ODbL, not MIT; the README says "Road data © OpenStreetMap contributors, available under the Open Database License (ODbL)" with the copyright link.
+   - A road segment is *flagged* if it crosses NISAR candidate water on the "after" date, within cells with a valid observation.
+   - Exits of a locality: road segments crossing a 2 km circle around it *[proposal; 3–5 km may suit larger towns such as Lajeado]*. An exit is cut if its segment inside the circle is flagged.
+   - Card rules, in order: (a) an official bulletin covers an exit → "Interruption confirmed by [source] at [time]"; (b) all exits cut → "No path under modeled conditions"; (c) at least one exit cut → "Section requiring verification"; (d) no exit cut, or no valid observation over the roads → "Isolation not demonstrated" (with a coverage warning when there is no valid observation).
+   - Bulletins: optional, demo case only, hand-entered JSON with source, date, time, time zone and segment. Never invented.
+   - The card always separates "NISAR observation", "Map context (OpenStreetMap)" and "Inference".
+4. **Wording.** README, pitch and submission: "NISAR detects the water; OpenStreetMap roads and IBGE localities provide context." "NASA data used" lists NASA data only; OpenStreetMap and IBGE go under "Other data".
+
+Nothing invented: data, licences and dates not confirmed stay *[to verify]*.
+
 ## Track A findings (2026-11-15, 02:52–03:10 BRT)
 
 - NISAR coverage **confirmed** by a CMR query (`pipeline/query.py`, results in `data/nisar_granules.json`): 21 GCOV granules since 2025, all fully covering the AOI, in two stacks repeating every 12 days:
