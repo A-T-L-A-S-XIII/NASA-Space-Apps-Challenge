@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from pydantic import field_validator
 from typing import Annotated
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -11,6 +12,8 @@ class Settings(BaseSettings):
 
     # Origens liberadas no CORS, separadas por vírgula no .env
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
+    # Regex opcional, ex.: https://water-waltz.*\.vercel\.app (libera os previews da Vercel)
+    cors_origin_regex: str | None = None
 
     jwt_secret: str = "troque-esta-chave"
     jwt_algorithm: str = "HS256"
@@ -32,12 +35,22 @@ class Settings(BaseSettings):
     enso_cache_ttl_seconds: int = 6 * 60 * 60
     enso_retry_seconds: int = 5 * 60  # depois de uma falha, espera isso antes de tentar a NOAA de novo
 
+    # Modo offline (pitch sem internet): ASF e NOAA são lidos dos snapshots salvos por scripts/snapshot.py.
+    # Mesmo com false, se a fonte ao vivo falhar e houver snapshot, ele é usado (live: false).
+    offline_mode: bool = False
+    snapshot_dir: str = str(Path(__file__).resolve().parent / "data" / "snapshots")
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_origins(cls, value):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @field_validator("cors_origin_regex", mode="before")
+    @classmethod
+    def empty_regex(cls, value):
+        return value or None
 
 
 settings = Settings()

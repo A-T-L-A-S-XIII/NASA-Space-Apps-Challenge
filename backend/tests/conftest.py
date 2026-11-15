@@ -3,6 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -16,9 +17,13 @@ os.environ["JWT_SECRET"] = "chave-de-teste-com-pelo-menos-32-bytes!!"
 os.environ["SEED_GOV_EMAIL"] = "gov@teste.dev"
 os.environ["SEED_GOV_PASSWORD"] = "senha-gov-123"
 os.environ["TFW_DATA_DIR"] = str(FIXTURES)
+# Testes nunca usam os snapshots reais de app/data/snapshots nem o modo offline do .env
+os.environ["OFFLINE_MODE"] = "false"
+os.environ["SNAPSHOT_DIR"] = str(REPO / "backend" / "tests" / "_sem_snapshots")
 
 from app.db import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402
+from app.services import asf  # noqa: E402
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -27,6 +32,16 @@ def dev_fixtures():
     subprocess.run([sys.executable, str(REPO / "pipeline" / "make_dev_fixtures.py")],
                    check=True, capture_output=True)
     yield
+
+
+@pytest.fixture(autouse=True)
+def asf_sem_cenas(monkeypatch):
+    """Por padrão o ASF responde sem cenas (nenhum teste usa a internet). Os testes podem trocar."""
+    asf.clear_cache()
+    monkeypatch.setattr(asf, "_transport", httpx.MockTransport(
+        lambda request: httpx.Response(200, json={"type": "FeatureCollection", "features": []})))
+    yield
+    asf.clear_cache()
 
 
 @pytest.fixture

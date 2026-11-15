@@ -62,3 +62,14 @@ def affected_cities(geom, region: dict) -> list[str]:
 def to_geojson(geom) -> dict:
     """Geometria GeoJSON com coordenadas arredondadas (~1 m) para a resposta ficar leve."""
     return mapping(shapely.set_precision(geom, 1e-5))
+
+
+def simplified_geojson(geom, region: dict, tolerance_m: float = 30) -> dict:
+    """Como to_geojson, mas com menos vértices (tolerância em metros), para respostas com muitas manchas."""
+    simple = to_metric(geom, region).simplify(tolerance_m, preserve_topology=True)
+    return to_geojson(to_lonlat(simple, region))
+
+
+def city_hit(geom, city: dict, region: dict) -> bool:
+    """A mancha cobre o núcleo urbano da cidade? (mesmo critério de affected_cities)"""
+    return city["name"] in affected_cities(geom, {**region, "cities": [city]})

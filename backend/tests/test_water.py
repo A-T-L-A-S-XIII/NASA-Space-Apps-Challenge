@@ -340,3 +340,44 @@ def test_endpoints_usam_o_provider_da_regiao(client, monkeypatch):
     compare = client.get(f"{BASE}/compare?before=2024-04&after=2024-05").json()
     assert compare["source"] == "fake"
     assert "ilustrativos" not in compare["summary"]
+
+
+# --- Linha do tempo animada ---
+
+def test_frames_todos_os_meses(client):
+    r = client.get(f"{BASE}/water-mask/frames?start=2024-01&end=2024-12")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["source"] == "demo" and data["note"]
+    assert data["count"] == 12
+    frames = {f["date"]: f for f in data["frames"]}
+    assert list(frames) == [f"2024-{m:02d}" for m in range(1, 13)]
+    assert frames["2024-05"]["status"] == "enchente"
+    assert frames["2024-05"]["geojson"]["type"] in ("Polygon", "MultiPolygon")
+
+
+def test_frames_batem_com_water_mask(client):
+    frame = client.get(f"{BASE}/water-mask/frames?start=2023-09&end=2023-09").json()["frames"][0]
+    mask = client.get(f"{BASE}/water-mask?date=2023-09").json()["features"][0]
+    assert frame["water_area_km2"] == mask["properties"]["water_area_km2"]
+    assert frame["status"] == mask["properties"]["status"]
+
+
+def test_frames_geometria_simplificada(client):
+    def points(geom):
+        rings = geom["coordinates"] if geom["type"] == "Polygon" else [r for p in geom["coordinates"] for r in p]
+        return sum(len(ring) for ring in rings)
+
+    frame = client.get(f"{BASE}/water-mask/frames?start=2024-05&end=2024-05").json()["frames"][0]
+    mask = client.get(f"{BASE}/water-mask?date=2024-05").json()["features"][0]
+    assert points(frame["geojson"]) < points(mask["geometry"])
+
+
+def test_frames_padrao_e_limites(client):
+    data = client.get(f"{BASE}/water-mask/frames").json()
+    assert data["start"] == "2022-01" and data["end"] == water.current_month()
+    assert client.get(f"{BASE}/water-mask/frames?start=2024-05&end=2024-01").status_code == 422
+    r = client.get(f"{BASE}/water-mask/frames?start=1990-01&end=2024-01")
+    assert r.status_code == 422
+    assert "no máximo" in r.json()["detail"]
+    assert client.get("/api/regions/atlantida/water-mask/frames").status_code == 404

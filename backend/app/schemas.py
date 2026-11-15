@@ -221,6 +221,7 @@ FaseEnso = Literal["El Niño", "La Niña", "Neutro"]
 
 
 class City(BaseModel):
+    id: str = Field(description="Nome sem acento, com hífen (ex.: roca-sales)")
     name: str
     lat: float
     lon: float
@@ -261,6 +262,7 @@ class ScenesResponse(BaseModel):
     query: dict
     scenes: list[Scene] = Field(description="Da cena mais recente para a mais antiga")
     error: str | None
+    snapshot_date: str | None = Field(None, description="Data do snapshot usado quando a fonte ao vivo não respondeu (ou OFFLINE_MODE)")
 
 
 # ------------------------------------------------------- água (linha do tempo)
@@ -279,6 +281,7 @@ class EnsoSource(BaseModel):
     live: bool
     source: str
     error: str | None
+    snapshot_date: str | None = Field(None, description="Data do snapshot usado quando a fonte ao vivo não respondeu (ou OFFLINE_MODE)")
 
 
 class RegionTimeline(BaseModel):
@@ -324,6 +327,27 @@ class CompareSide(BaseModel):
     status: StatusAgua
     cidades_atingidas: list[str]
     geojson: WaterMaskCollection
+    browse_url: str | None = Field(description="Imagem (browse) da cena NISAR mais perto do mês, até 30 dias; "
+                                               "null se não houver")
+    browse_date: str | None = Field(description="Data e hora da cena do browse_url")
+
+
+class WaterFrame(BaseModel):
+    date: str = Field(description="AAAA-MM")
+    status: StatusAgua
+    water_area_km2: float
+    source: str
+    geojson: dict = Field(description="Geometria GeoJSON simplificada (tolerância de 30 m)")
+
+
+class WaterFrames(BaseModel):
+    region_id: str
+    source: str
+    note: str | None
+    start: str
+    end: str
+    count: int
+    frames: list[WaterFrame]
 
 
 class Compare(BaseModel):
@@ -357,6 +381,7 @@ class Enso(BaseModel):
     count: int
     series: list[OniPoint]
     error: str | None
+    snapshot_date: str | None = Field(None, description="Data do snapshot usado quando a fonte ao vivo não respondeu (ou OFFLINE_MODE)")
 
 
 # --------------------------------------------------------------- explicações
@@ -394,12 +419,14 @@ class StatusEnso(BaseModel):
     oni: float | None
     phase: FaseEnso | None
     error: str | None
+    snapshot_date: str | None = Field(None, description="Data do snapshot usado quando a fonte ao vivo não respondeu (ou OFFLINE_MODE)")
 
 
 class StatusScene(BaseModel):
     live: bool
     scene: Scene | None = Field(description="Cena NISAR GCOV mais recente sobre a região")
     error: str | None
+    snapshot_date: str | None = Field(None, description="Data do snapshot usado quando a fonte ao vivo não respondeu (ou OFFLINE_MODE)")
 
 
 class RegionStatus(BaseModel):
@@ -417,3 +444,48 @@ class FeatureCollection(BaseModel):
 
     type: Literal["FeatureCollection"]
     features: list[dict]
+
+
+# ------------------------------------------------------------------- alertas
+NivelAlerta = Literal["atencao", "alerta", "emergencia"]
+
+
+class AlertCreate(BaseModel):
+    region_id: str
+    city_id: str | None = Field(None, description="Vazio = alerta para a região inteira")
+    level: NivelAlerta
+    title: str = Field(min_length=1, max_length=120)
+    message: str = Field(min_length=1, max_length=2000)
+
+
+class AlertUpdate(BaseModel):
+    active: bool = Field(description="false desativa o alerta")
+
+
+class AlertOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    region_id: str
+    city_id: str | None
+    level: NivelAlerta
+    title: str
+    message: str
+    created_by: int
+    created_at: datetime
+    active: bool
+    source: Literal["governo", "demo"] = Field(description='"demo" para alerta de exemplo criado no startup')
+
+
+class CityStatus(BaseModel):
+    city_id: str
+    city_name: str
+    region_id: str
+    date: str = Field(description="Mês mais recente (AAAA-MM)")
+    inside_water: bool = Field(description="A mancha d'água do mês cobre o núcleo urbano da cidade")
+    status: StatusAgua = Field(description="Status do rio na região no mesmo mês")
+    water_area_km2: float
+    source: str = Field(description='"demo" para dado ilustrativo')
+    note: str | None
+    text: str = Field(description="Frase curta para o cidadão")
+    alerts: list[AlertOut] = Field(description="Alertas ativos da cidade e da região inteira")

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app import providers
 from app.routers.deps import region_or_404
-from app.schemas import Compare, RegionTimeline, WaterMaskCollection
+from app.schemas import Compare, RegionTimeline, WaterFrames, WaterMaskCollection
 from app.services import water
 
 router = APIRouter(prefix="/api/regions", tags=["Água"])
@@ -39,12 +39,33 @@ def region_water_mask(region: dict = Depends(region_or_404), date: str = Query(.
     return water.water_mask_geojson(providers.get_provider(region["id"]), region, _month(date, "date"))
 
 
+@router.get("/{region_id}/water-mask/frames", response_model=WaterFrames,
+            summary="Manchas de vários meses (linha do tempo animada)", responses=NOT_FOUND)
+def region_water_frames(
+    region: dict = Depends(region_or_404),
+    start: str = Query("2022-01", description="Mês inicial (AAAA-MM)"),
+    end: str | None = Query(None, description="Mês final (AAAA-MM). Padrão: mês atual"),
+):
+    """Todos os meses de uma vez, com a geometria simplificada para o payload ficar leve."""
+    start = _month(start, "start")
+    end = _month(end, "end") if end else water.current_month()
+    if end < start:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="'end' deve ser depois de 'start'")
+    if len(water.month_range(start, end)) > water.MAX_FRAMES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            detail=f"Peça no máximo {water.MAX_FRAMES} meses de uma vez")
+    return water.frames(providers.get_provider(region["id"]), region, start, end)
+
+
 @router.get("/{region_id}/compare", response_model=Compare, summary="Antes e depois", responses=NOT_FOUND)
-def region_compare(
+async def region_compare(
     region: dict = Depends(region_or_404),
     before: str = Query(..., description="Mês de antes (AAAA-MM)"),
     after: str = Query(..., description="Mês de depois (AAAA-MM)"),
 ):
-    """Duas manchas, a diferença de área e uma frase explicando a mudança para o cidadão."""
+    """Duas manchas, a diferença de área e uma frase explicando a mudança para o cidadão.
+
+    `browse_url` traz a imagem da cena NISAR (ASF) mais perto de cada mês, até 30 dias; senão, null.
+    """
     before, after = _month(before, "before"), _month(after, "after")
-    return water.compare(providers.get_provider(region["id"]), region, before, after)
+    return await water.compare(providers.get_provider(region["id"]), region, before, after)

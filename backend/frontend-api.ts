@@ -24,6 +24,8 @@ export type GeoJSONGeometry = { type: string; coordinates: unknown };
 
 // ------------------------------------------------------------------ regiões
 export interface City {
+  /** Nome sem acento, com hífen (ex.: "roca-sales") */
+  id: string;
   name: string;
   lat: number;
   lon: number;
@@ -68,6 +70,8 @@ export interface ScenesResponse {
   /** Da mais recente para a mais antiga */
   scenes: Scene[];
   error: string | null;
+  /** Data do snapshot usado quando a fonte ao vivo falhou (ou OFFLINE_MODE) */
+  snapshot_date: string | null;
 }
 
 // --------------------------------------------------------------------- água
@@ -133,6 +137,28 @@ export interface CompareSide {
   status: StatusAgua;
   cidades_atingidas: string[];
   geojson: WaterMaskCollection;
+  /** Imagem da cena NISAR mais perto do mês (até 30 dias); null se não houver */
+  browse_url: string | null;
+  browse_date: string | null;
+}
+
+export interface WaterFrame {
+  date: string;
+  status: StatusAgua;
+  water_area_km2: number;
+  source: DataSource;
+  /** Geometria simplificada (tolerância de 30 m) */
+  geojson: GeoJSONGeometry;
+}
+
+export interface WaterFrames {
+  region_id: string;
+  source: DataSource;
+  note: string | null;
+  start: string;
+  end: string;
+  count: number;
+  frames: WaterFrame[];
 }
 
 export interface Compare {
@@ -170,6 +196,8 @@ export interface Enso {
   count: number;
   series: OniPoint[];
   error: string | null;
+  /** Data do snapshot usado quando a fonte ao vivo falhou (ou OFFLINE_MODE) */
+  snapshot_date: string | null;
 }
 
 // -------------------------------------------------------------- explicações
@@ -211,12 +239,16 @@ export interface StatusEnso {
   oni: number | null;
   phase: FaseEnso | null;
   error: string | null;
+  /** Data do snapshot usado quando a fonte ao vivo falhou (ou OFFLINE_MODE) */
+  snapshot_date: string | null;
 }
 
 export interface StatusScene {
   live: boolean;
   scene: Scene | null;
   error: string | null;
+  /** Data do snapshot usado quando a fonte ao vivo falhou (ou OFFLINE_MODE) */
+  snapshot_date: string | null;
 }
 
 export interface RegionStatus {
@@ -252,6 +284,47 @@ export interface TokenResponse {
   access_token: string;
   token_type: "bearer";
   user: User;
+}
+
+// ------------------------------------------------------------------- alertas
+export type NivelAlerta = "atencao" | "alerta" | "emergencia";
+
+export interface Alert {
+  id: number;
+  region_id: string;
+  /** null = alerta para a região inteira */
+  city_id: string | null;
+  level: NivelAlerta;
+  title: string;
+  message: string;
+  created_by: number;
+  created_at: string;
+  active: boolean;
+  /** "demo" = alerta de exemplo criado no startup, não é aviso real */
+  source: "governo" | "demo";
+}
+
+export interface AlertCreate {
+  region_id: string;
+  city_id?: string | null;
+  level: NivelAlerta;
+  title: string;
+  message: string;
+}
+
+export interface CityStatus {
+  city_id: string;
+  city_name: string;
+  region_id: string;
+  date: string;
+  /** A mancha d'água do mês cobre o núcleo urbano da cidade */
+  inside_water: boolean;
+  status: StatusAgua;
+  water_area_km2: number;
+  source: DataSource;
+  note: string | null;
+  text: string;
+  alerts: Alert[];
 }
 
 // --------------------------------------------------------------------- erros
@@ -320,8 +393,31 @@ export function createApi(baseUrl = "http://localhost:8000", getToken?: () => st
       request<RegionTimeline>(`${region(id)}/timeline`, { query: opts }),
     waterMask: (id: string, date: string) =>
       request<WaterMaskCollection>(`${region(id)}/water-mask`, { query: { date } }),
+    waterFrames: (id: string, opts: { start?: string; end?: string } = {}) =>
+      request<WaterFrames>(`${region(id)}/water-mask/frames`, { query: opts }),
     compare: (id: string, before: string, after: string) =>
       request<Compare>(`${region(id)}/compare`, { query: { before, after } }),
+
+    // Alertas
+    alerts: (opts: { region_id?: string; city_id?: string } = {}) => request<Alert[]>("/api/alerts", { query: opts }),
+    createAlert: (data: AlertCreate) =>
+      request<Alert>("/api/alerts", { method: "POST", body: JSON.stringify(data) }),
+    setAlertActive: (alertId: number, active: boolean) =>
+      request<Alert>(`/api/alerts/${alertId}`, { method: "PATCH", body: JSON.stringify({ active }) }),
+    myCityStatus: () => request<CityStatus>("/api/me/city-status"),
+    /** CSV da linha do tempo (só governo). Devolve um Blob para baixar. */
+    exportTimelineCsv: async (id: string, opts: { start?: string; end?: string } = {}) => {
+      const params = new URLSearchParams(Object.entries(opts).filter(([, v]) => v) as [string, string][]);
+      const token = getToken?.();
+      const res = await fetch(`${base}/api/gov/export/${encodeURIComponent(id)}.csv?${params}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new ApiError(res.status, typeof body?.detail === "string" ? body.detail : `Erro ${res.status}`, body);
+      }
+      return res.blob();
+    },
 
     // Clima
     enso: (start?: string) => request<Enso>("/api/climate/enso", { query: { start } }),

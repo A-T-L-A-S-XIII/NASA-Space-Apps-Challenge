@@ -5,7 +5,9 @@ com as colunas SEAS YR TOTAL ANOM. Cada estação é associada ao mês central:
 DJF 2024 -> 2024-01, NDJ 2023 -> 2023-12.
 
 Cache de 6 h. Se a NOAA falhar, devolvemos o último cache (mesmo vencido)
-com live=False e "error"; sem cache, live=False e série vazia.
+com live=False e "error"; sem cache, o snapshot salvo por scripts/snapshot.py
+(com "snapshot_date"); sem nada, live=False e série vazia.
+Com OFFLINE_MODE=true, a NOAA nem é chamada: só o snapshot.
 """
 
 import time
@@ -14,6 +16,7 @@ from datetime import datetime, timezone
 import httpx
 
 from app.config import settings
+from app.services import snapshots
 
 SEASONS = ["DJF", "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ"]
 
@@ -61,6 +64,9 @@ def parse_oni(text: str) -> list[dict]:
 
 async def get_enso() -> dict:
     """Série ONI completa, do cache quando possível."""
+    if settings.offline_mode:
+        return _fallback(None, None)
+
     now = time.monotonic()
     cached = _cache["data"]
     if cached and _cache["expires"] > now:
@@ -89,6 +95,7 @@ async def get_enso() -> dict:
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "series": series,
         "error": None,
+        "snapshot_date": None,
     }
     _cache.update(data=data, expires=now + settings.enso_cache_ttl_seconds, retry_at=0.0, error=None)
     return data
@@ -97,6 +104,20 @@ async def get_enso() -> dict:
 def _fallback(cached: dict | None, error: str | None) -> dict:
     if cached:
         return {**cached, "live": False, "error": error}
+    snap = snapshots.load(snapshots.NOAA_FILE)
+    series = parse_oni(snap.get("text", "")) if snap else []
+    if series:
+        return {
+            "live": False,
+            "source": "NOAA CPC",
+            "url": snap.get("url", settings.noaa_oni_url),
+            "fetched_at": snap["snapshot_date"],
+            "series": series,
+            "error": error,
+            "snapshot_date": snap["snapshot_date"],
+        }
+    if error is None:
+        error = "Modo offline: não há snapshot da NOAA"
     return {
         "live": False,
         "source": "NOAA CPC",
@@ -104,6 +125,7 @@ def _fallback(cached: dict | None, error: str | None) -> dict:
         "fetched_at": None,
         "series": [],
         "error": error,
+        "snapshot_date": None,
     }
 
 

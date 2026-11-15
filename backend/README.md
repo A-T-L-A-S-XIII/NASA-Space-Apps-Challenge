@@ -37,6 +37,30 @@ pytest
 
 Os testes não usam a internet: ASF e NOAA são trocados por respostas falsas (`httpx.MockTransport`).
 
+Com Docker, sem instalar nada (a partir da **raiz** do repositório):
+
+```bash
+docker build -t water-waltz-api .
+docker run --rm water-waltz-api pytest
+docker run --rm -p 8000:8000 --env-file backend/.env water-waltz-api
+```
+
+## Modo offline (pitch sem internet)
+
+1. Com internet, gere os snapshots do ASF (cenas NISAR GCOV) e da NOAA (ONI):
+
+   ```bash
+   python scripts/snapshot.py              # ou: --products GCOV GUNW
+   ```
+
+   Eles ficam em `app/data/snapshots/*.json` e vão junto no commit e na imagem Docker.
+2. No `.env`, ponha `OFFLINE_MODE=true`. A API para de chamar o ASF e a NOAA e lê só os snapshots.
+3. Mesmo com `OFFLINE_MODE=false`, se a chamada ao vivo falhar e houver snapshot, ele é usado. A
+   resposta vem com `"live": false`, `"snapshot_date"` (quando o snapshot foi salvo) e o `error`
+   original. Sem snapshot, o comportamento é o de antes: lista ou série vazia com `error`.
+
+Rode o script de novo perto do pitch para os dados ficarem atualizados.
+
 ## Endpoints
 
 | Método | Rota | Descrição | Dados |
@@ -46,13 +70,19 @@ Os testes não usam a internet: ASF e NOAA são trocados por respostas falsas (`
 | POST | `/api/auth/login` | Devolve `{access_token, token_type, user}` | — |
 | GET | `/api/auth/me` | Usuário logado (header `Authorization: Bearer <token>`) | — |
 | POST | `/api/auth/gov-users` | Cria usuário `governo` (só para usuários `governo`) | — |
+| GET | `/api/me/city-status` | Cidadão: a cidade do cadastro está na mancha d'água do mês atual? + alertas ativos | demo |
+| GET | `/api/alerts` | Alertas ativos (`region_id`, `city_id`; com `city_id` inclui os da região inteira). Público | banco |
+| POST | `/api/alerts` | Cria alerta `{region_id, city_id?, level, title, message}` (só `governo`) | banco |
+| PATCH | `/api/alerts/{id}` | `{"active": false}` desativa o alerta (só `governo`) | banco |
+| GET | `/api/gov/export/{region_id}.csv` | Linha do tempo em CSV: data, área, anomalia, status, ONI, fase, fonte (só `governo`) | demo + ONI |
 | GET | `/api/regions` | Regiões monitoradas (piloto: `vale-do-taquari`) | fixo |
 | GET | `/api/regions/{id}` | Bbox, centro, cidades e traçado do rio | fixo |
 | GET | `/api/regions/{id}/status` | Resumo para o card principal: água do mês, ENSO e última cena NISAR | demo + ao vivo |
 | GET | `/api/regions/{id}/scenes` | Cenas NISAR do ASF (`start`, `end`, `product=GCOV`, `limit=25`) | **ao vivo** |
 | GET | `/api/regions/{id}/timeline` | Série mensal: área, anomalia, status, ONI e fase ENSO (`start=2022-01`, `end`) | demo + ONI ao vivo |
 | GET | `/api/regions/{id}/water-mask` | GeoJSON da mancha d'água (`date=AAAA-MM`), área e cidades atingidas | demo |
-| GET | `/api/regions/{id}/compare` | Antes/depois (`before`, `after`), delta e frase explicativa | demo |
+| GET | `/api/regions/{id}/water-mask/frames` | Todos os meses de uma vez (`start=2022-01`, `end`; máx. 120), geometria simplificada | demo |
+| GET | `/api/regions/{id}/compare` | Antes/depois (`before`, `after`), delta, frase e `browse_url` da cena NISAR mais próxima | demo + ASF |
 | GET | `/api/climate/enso` | ONI da NOAA com a fase: El Niño, La Niña ou Neutro (`start` opcional) | **ao vivo** |
 | GET | `/api/explain` | Textos para leigos (`{id, title, summary, body, icon}`) | fixo |
 | GET | `/api/explain/{topic}` | `sar`, `agua-no-radar`, `nisar`, `el-nino`, `la-nina`, `como-ler-o-mapa` | fixo |
@@ -72,13 +102,59 @@ estão em `frontend-api.ts`.
 
 | Fonte | Rotas | Como |
 |---|---|---|
-| **ASF DAAC (NISAR)**, ao vivo | `/scenes`, `/status` | Catálogo público, sem login. Cache de 30 min. Se o ASF falhar: `live: false`, lista vazia e `error`. |
-| **NOAA CPC (ONI)**, ao vivo | `/climate/enso`, `/timeline`, `/status` | Arquivo `oni.ascii.txt`. Cache de 6 h. Se a NOAA falhar: último cache com `live: false`, ou série vazia com `error`. |
+| **ASF DAAC (NISAR)**, ao vivo | `/scenes`, `/status`, `/compare` | Catálogo público, sem login. Cache de 30 min. Se o ASF falhar: snapshot com `live: false` e `snapshot_date`; sem snapshot, lista vazia e `error`. |
+| **NOAA CPC (ONI)**, ao vivo | `/climate/enso`, `/timeline`, `/status` | Arquivo `oni.ascii.txt`. Cache de 6 h. Se a NOAA falhar: último cache com `live: false`, senão o snapshot, senão série vazia com `error`. |
 | **DemoProvider**, demo | `/timeline`, `/water-mask`, `/compare`, `/status` | Valores ilustrativos e determinísticos com `"source": "demo"` e `"note"`. Seguem a cronologia real (estiagem de 2022 ao início de 2023; enchentes de set/2023, nov/2023 e mai/2024), mas **não são medições**: o NISAR só entrou em operação depois de 2025. |
 | **Radar processado** | `/api/timeline`, `/api/layers`... | Arquivos gerados antes pelo pipeline em `data/demo/`. Com `data/fixtures/`, as respostas vêm com `"fixture": true`. |
 
+Alertas e usuários ficam no SQLite. No startup, a API cria a conta governo semente e **2 alertas
+de exemplo** com `"source": "demo"` e título começando com `[Exemplo]` (não são avisos reais).
+Os ids das cidades são o nome sem acento, com hífen (`mucum`, `roca-sales`) e aparecem em
+`/api/regions/{id}`. O `city` do cadastro é comparado do mesmo jeito, então "Muçum" e "mucum" valem.
+
+No `/compare`, `before.browse_url` e `after.browse_url` são a imagem de prévia (browse) da cena NISAR
+GCOV mais perto do dia 15 do mês, até 30 dias de distância; senão, `null`. Para 2022–2024 é sempre
+`null`, porque o NISAR ainda não operava.
+
 Na mancha demo, a área é calculada em UTM (metros), nunca em graus. Uma cidade conta como
 atingida quando a mancha cobre pelo menos 30% de um círculo de 1 km em volta do centro dela.
+
+## Deploy (Render ou Railway)
+
+O `Dockerfile` fica na **raiz** do repositório (a imagem precisa de `backend/`, `data/` e `pipeline/`).
+A API sobe com `uvicorn` na porta `$PORT`, que as duas plataformas definem sozinhas.
+
+**Render**
+
+1. *New > Web Service*, conecte o repositório e escolha **Docker** como runtime.
+2. Deixe *Root Directory* vazio e *Dockerfile Path* = `./Dockerfile`.
+3. Em *Environment*, crie as variáveis abaixo. *Health Check Path*: `/health`.
+
+**Railway**
+
+1. *New Project > Deploy from GitHub repo*. O Railway acha o `Dockerfile` da raiz sozinho.
+2. Em *Variables*, crie as variáveis abaixo. Em *Settings > Networking*, gere um domínio público.
+
+**Variáveis** (nunca coloque segredos na imagem nem no repositório):
+
+| Variável | Valor |
+|---|---|
+| `JWT_SECRET` | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `SEED_GOV_EMAIL`, `SEED_GOV_PASSWORD` | Conta governo inicial (senha forte) |
+| `CORS_ORIGINS` | Domínio do frontend na Vercel, ex.: `https://water-waltz.vercel.app` (vírgula para vários) |
+| `CORS_ORIGIN_REGEX` | Opcional, para os previews da Vercel: `https://water-waltz.*\.vercel\.app` |
+| `OFFLINE_MODE` | `false` (ou `true` no pitch, se a rede do evento for ruim) |
+
+Depois, no projeto da Vercel, aponte o frontend para a URL da API (ex.: `https://water-waltz-api.onrender.com`).
+
+Cuidados:
+
+- O SQLite fica dentro do container: **contas e alertas somem a cada deploy ou reinício**. A conta
+  governo semente e os alertas de exemplo são recriados no startup. Para guardar dados de verdade,
+  use um disco persistente (Render *Disks*, Railway *Volumes*) com `DATABASE_URL=sqlite:////dados/water_waltz.db`.
+- No plano gratuito do Render, o serviço dorme sem acesso e o primeiro pedido demora cerca de 1 min.
+  Abra a API alguns minutos antes do pitch.
+- As rotas de **radar processado** respondem 503 sem `data/demo/` (que não está no repositório).
 
 ## Próximos passos: trocar o DemoProvider por NISAR real
 

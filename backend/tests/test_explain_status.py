@@ -103,7 +103,7 @@ def test_status(client):
 
     # Última estação do ONI_TEXT: MJJ 2024, La Niña
     assert data["enso"] == {"live": True, "month": "2024-06", "season": "MJJ", "oni": -0.5,
-                            "phase": "La Niña", "error": None}
+                            "phase": "La Niña", "error": None, "snapshot_date": None}
 
     # Cena mais recente, mesmo vindo fora de ordem do ASF
     assert data["latest_scene"]["live"] is True
@@ -122,7 +122,8 @@ def test_status_sem_internet(client, monkeypatch):
     assert r.status_code == 200
     data = r.json()
     assert data["enso"]["live"] is False and data["enso"]["phase"] is None and data["enso"]["error"]
-    assert data["latest_scene"] == {"live": False, "scene": None, "error": data["latest_scene"]["error"]}
+    assert data["latest_scene"] == {"live": False, "scene": None, "error": data["latest_scene"]["error"],
+                                    "snapshot_date": None}
     assert data["latest_scene"]["error"]
     assert "Não foi possível consultar as cenas do NISAR" in data["text"]
     assert "NOAA" not in data["text"]
@@ -151,8 +152,8 @@ def test_status_regiao_inexistente(client):
 
 # --- Documentação (Swagger) ---
 
-FILE_ROUTES = {"/api/aoi", "/api/grid", "/api/files/{path}", "/api/download/{kind}"}
-PT_TAGS = {"Sistema", "Autenticação", "Regiões", "Água", "Clima", "Explicações", "Radar processado"}
+FILE_ROUTES = {"/api/aoi", "/api/grid", "/api/files/{path}", "/api/download/{kind}", "/api/gov/export/{region_id}.csv"}
+PT_TAGS = {"Sistema", "Autenticação", "Regiões", "Água", "Alertas", "Clima", "Explicações", "Radar processado"}
 
 
 def test_openapi_tags_em_portugues_e_rotas_documentadas():

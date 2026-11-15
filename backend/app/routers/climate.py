@@ -20,4 +20,5 @@ async def get_enso(start: str | None = Query(None, pattern=r"^\d{4}-\d{2}$", des
         "count": len(series),
         "series": series,
         "error": data["error"],
+        "snapshot_date": data.get("snapshot_date"),
     }

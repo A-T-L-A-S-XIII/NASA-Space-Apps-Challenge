@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, String, create_engine
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from app.config import settings
@@ -28,6 +28,21 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), default="cidadao")  # "cidadao" | "governo"
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    region_id: Mapped[str] = mapped_column(String(60), index=True)
+    city_id: Mapped[str | None] = mapped_column(String(60), nullable=True, index=True)  # vazio = região inteira
+    level: Mapped[str] = mapped_column(String(20))  # "atencao" | "alerta" | "emergencia"
+    title: Mapped[str] = mapped_column(String(120))
+    message: Mapped[str] = mapped_column(Text)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    source: Mapped[str] = mapped_column(String(20), default="governo")  # "governo" | "demo"
 
 
 def create_tables():

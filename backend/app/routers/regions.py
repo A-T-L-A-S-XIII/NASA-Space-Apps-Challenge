@@ -53,4 +53,5 @@ async def region_scenes(
         "query": result["query"],
         "scenes": result["scenes"],
         "error": result["error"],
+        "snapshot_date": result.get("snapshot_date"),
     }
