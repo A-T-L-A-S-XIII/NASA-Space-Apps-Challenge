@@ -102,6 +102,14 @@ def test_governo_cria_e_desativa_alerta(client):
     assert alert["id"] not in [a["id"] for a in client.get("/api/alerts").json()]
 
 
+def test_created_at_volta_em_utc(client):
+    """O SQLite não guarda o fuso; a API deve devolver o horário com +00:00."""
+    alerts = client.get("/api/alerts").json()
+    assert all(a["created_at"].endswith(("+00:00", "Z")) for a in alerts)
+    me = client.get("/api/auth/me", headers=auth_header(token_gov(client))).json()
+    assert me["created_at"].endswith(("+00:00", "Z"))
+
+
 def test_filtro_por_cidade_inclui_alerta_da_regiao(client):
     client.post("/api/alerts", json=ALERT, headers=auth_header(token_gov(client)))
     encantado = client.get("/api/alerts?city_id=encantado").json()
