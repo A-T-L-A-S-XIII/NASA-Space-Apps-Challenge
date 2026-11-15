@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./water_waltz.db"
 
     # Origens liberadas no CORS, separadas por vírgula no .env
-    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000", "http://localhost:5178"]
 
     jwt_secret: str = "troque-esta-chave"
     jwt_algorithm: str = "HS256"
@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     asf_search_url: str = "https://api.daac.asf.alaska.edu/services/search/param"
     asf_timeout_seconds: float = 30
     asf_cache_ttl_seconds: int = 30 * 60
+
+    # Passagens NISAR já processadas (padrão: Fotos/nisar_taquari_50 na raiz do repositório)
+    nisar_dir: str | None = None
+
+    # Fontes externas de contexto (previsão do tempo e busca de bairros)
+    open_meteo_url: str = "https://api.open-meteo.com/v1/forecast"
+    nominatim_url: str = "https://nominatim.openstreetmap.org/search"
+    external_timeout_seconds: float = 15
+    forecast_cache_ttl_seconds: int = 30 * 60
 
     @field_validator("cors_origins", mode="before")
     @classmethod

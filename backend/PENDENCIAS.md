@@ -16,10 +16,19 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 
 ### Servir o NISAR já processado (`Fotos/nisar_taquari_50/`)
 
-- [ ] Criar rotas que sirvam as 19 passagens já processadas: `catalogo.json`, o GeoJSON de cheia e seca de cada data e as imagens.
+- [x] Criar rotas que sirvam as 19 passagens já processadas: `catalogo.json`, o GeoJSON de cheia e seca de cada data e as imagens (`/api/nisar/*`, ver README).
 - **Cuidado 1:** a área de água depende da trilha (órbita). A `053_D` mede de 1 a 5 km² e a `103_A` mede de 7 a 9 km², no mesmo rio. Só compare datas da **mesma trilha**.
-- **Cuidado 2:** a área processada vai de −29,15 a −29,55 de latitude, mais ou menos de Muçum a Lajeado. Estrela, Bom Retiro do Sul e Taquari ficam de fora.
+- **Cuidado 2:** a área processada vai de −29,15 a −29,55 de latitude, de Muçum a Lajeado, e pega parte de Estrela (há cheia em Estrela em 23/07). Bom Retiro do Sul e Taquari ficam de fora.
 - **Em aberto:** de onde vem a "janela da enchente" (03/07 a 28/08/2026) do catálogo.
+
+### Vegetação alagada (não iniciado)
+
+- [ ] As cenas processadas têm só a polarização HH. Para separar vegetação alagada é preciso reprocessar as cenas GCOV com HH+HV (ou usar a razão HH/HV) e depois trocar a resposta 501 de `/api/nisar/vegetacao-alagada` pelo dado.
+
+### Área alagada por município
+
+- [ ] Hoje cada polígono é atribuído ao município que contém o seu centro (`/api/nisar/municipios`). Para recortar com precisão nas divisas, usar `shapely` (interseção de polígonos) no processamento.
+- [ ] A série só tem "cheia" e "seca" (mudança). A área total de água por município pede o polígono de água de cada data, que o processamento ainda não exporta.
 
 ### Rotas de secas e enchentes
 
