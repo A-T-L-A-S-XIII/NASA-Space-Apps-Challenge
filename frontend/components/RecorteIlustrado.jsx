@@ -1,4 +1,4 @@
-import { LIMITES, ARQUIVOS } from '@/data/taquari';
+import { LIMITES, ARQUIVOS } from '@/lib/nisarService';
 const PROP_IMG = 2130 / 1880;
 const PROP_CAIXA = 9 / 16;
 

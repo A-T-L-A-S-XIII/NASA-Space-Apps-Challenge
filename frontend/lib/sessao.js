@@ -9,7 +9,7 @@ const CHAVE = 'dws-sessao';
 
 export function entrar(email) {
   // 🔌 INTEGRAÇÃO: `areaCadastrada` virá do perfil do usuário (área que ele pediu para monitorar)
-  try { sessionStorage.setItem(CHAVE, JSON.stringify({ email, em: Date.now(), areaCadastrada: 'taquari', boasVindas: true })); } catch {}
+  try { sessionStorage.setItem(CHAVE, JSON.stringify({ email, em: Date.now(), areaCadastrada: 'vale-do-taquari', boasVindas: true })); } catch {}
 }
 /** Marca que o pop-up de boas-vindas já foi respondido nesta sessão. */
 export function boasVindasVista() {
