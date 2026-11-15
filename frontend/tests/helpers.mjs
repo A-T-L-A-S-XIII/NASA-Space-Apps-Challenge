@@ -1,9 +1,9 @@
-// Carrega mockup/js/modes.js num contexto isolado (vm) com um "navegador" falso.
+// Carrega public/js/modes.js num contexto isolado (vm) com um "navegador" falso.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-const SRC = readFileSync(fileURLToPath(new URL("../js/modes.js", import.meta.url)), "utf8");
+const SRC = readFileSync(fileURLToPath(new URL("../public/js/modes.js", import.meta.url)), "utf8");
 
 export function loadModes({ reduce = false, saveData = false, deviceMemory = 8, stored = {} } = {}) {
   const storage = new Map(Object.entries(stored));

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-const SRC = readFileSync(fileURLToPath(new URL("../js/radar-highlight.js", import.meta.url)), "utf8");
+const SRC = readFileSync(fileURLToPath(new URL("../public/js/radar-highlight.js", import.meta.url)), "utf8");
 const ctx = { window: { WW: { api: {} } } };
 vm.createContext(ctx);
 vm.runInContext(SRC, ctx);

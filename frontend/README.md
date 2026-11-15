@@ -12,11 +12,23 @@ backend/.venv/Scripts/python -m uvicorn app.main:app --app-dir backend --port 80
 ```
 
 ```bash
-python -m http.server 5178 --directory mockup
+cd frontend && npm install && npm run dev
 ```
 
-Depois abra http://localhost:5178. Para usar outra API, abra com `?api=http://outro-host:8000`.
-O login usa `/api/auth/login`. Se você ainda não tem conta, use "Entrar como visitante" ou crie uma com `POST /api/auth/register`.
+Depois abra http://localhost:3000. O Next.js só serve o mockup de `public/` e repassa `/api/*` para o FastAPI
+(rewrite em `next.config.js`). O endereço do FastAPI vem de `API_URL`, lida no servidor (modelo em
+`.env.example`; padrão `http://localhost:8000`). O navegador só vê caminhos relativos.
+
+`public/js/api.js` é o único arquivo com `fetch`. As telas ainda pedem os caminhos do PR #17 (`/api/nisar/*`,
+`/api/previsao`, `/api/lugares`); o `api.js` chama as rotas do main (`/api/regions/vale-do-taquari/passes`,
+`/municipalities`, `/export`, `/forecast`, `/api/places`…) e devolve os campos com os nomes antigos, mais
+`origem` (`"nisar"`, `"open-meteo"`… ou `"local"`).
+
+**Plano B:** com o FastAPI fora do ar, o `api.js` usa `public/data/fallback/` e avisa no console. Previsão,
+bairros, login e downloads precisam da API. Para atualizar os arquivos, com o FastAPI ligado:
+`node scripts/gerar-fallback.mjs`.
+
+O login usa `/api/auth/login`. Sem conta, use "Entrar como visitante".
 
 ## Telas
 
@@ -82,7 +94,7 @@ O visual é o original do mockup, derivado das referências da pasta do projeto:
 ### Testes
 
 ```bash
-node --test "mockup/tests/*.test.mjs"
+npm test
 ```
 
 Os testes cobrem: a alternância de modos (padrão, persistência, evento, valor inválido), a exportação (formatos, escape do CSV, ausência de dados do usuário) e o movimento reduzido (`prefers-reduced-motion`, Save-Data, memória, `@keyframes` só com transform/opacity, regras do login e do globo).
