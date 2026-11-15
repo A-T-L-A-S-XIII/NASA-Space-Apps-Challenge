@@ -48,6 +48,15 @@ TFW_DATA_DIR=data/fixtures uvicorn app.main:app --app-dir backend --reload
 
 Before publishing, `python pipeline/validate_demo.py` must pass: it refuses test data.
 
+### Deploy the frontend (Vercel)
+
+1. `python backend/export_static.py` (real data in `data/demo/`), then commit `frontend/public/api/`.
+2. On vercel.com: **Add New → Project**, import this repository, set **Root Directory** to `frontend`. The framework is detected as Next.js; `next.config.mjs` already sets a static export.
+3. Environment variables: `NEXT_PUBLIC_API_BASE` = the public API URL (leave empty to use the static files only).
+4. Deploy, then open the link in a private window.
+
+Where the API itself runs is still open: the accounts use a SQLite file, which serverless hosting does not keep.
+
 ## Method and limits
 
 See [docs/METHOD.md](docs/METHOD.md). In short: smooth water looks dark to radar, but shadows and other smooth surfaces do too; wind, cities and flooded vegetation can hide water; not seeing water does not prove there was no flood.
