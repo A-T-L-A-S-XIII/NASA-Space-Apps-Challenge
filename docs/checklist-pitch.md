@@ -4,7 +4,7 @@
 
 | Serviço | URL |
 |---|---|
-| Site (Next.js na Vercel) | `https://__________.vercel.app` *(preencher depois do deploy)* |
+| Site (Next.js na Vercel) | `https://nasa-space-apps-challenge-two.vercel.app` |
 | API (FastAPI no Render) | `https://water-waltz-api.onrender.com` (`/health` e `/docs` servem para conferir) |
 
 O navegador só abre o site. Quem chama a API é o servidor do Next.js (variável `API_URL` na Vercel).

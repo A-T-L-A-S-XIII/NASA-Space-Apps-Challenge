@@ -2,6 +2,8 @@
 
 NASA Space Apps 2026 · Challenge "Dancing with the SARs" · Local Event: Goiânia
 
+**Live demo:** https://nasa-space-apps-challenge-two.vercel.app (no account needed: choose **"Entrar como visitante"** on the login card). The API is on Render's free plan: the first visit after 15 minutes idle can take about a minute.
+
 > **Prototype.** The Taquari Valley screens show the 19 processed NISAR passes; the globe and the region drill-down use simulated values, labelled "simulado" on screen.
 > Candidate water-change indicator — not a validated flood map. Not for evacuation or route decisions.
 
