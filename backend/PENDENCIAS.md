@@ -26,6 +26,14 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 - [ ] Definir e criar as rotas que respondem "recorrente ou pontual?", juntando o histórico do Sentinel-1 e o detalhe do NISAR.
 - Depende dos dois itens acima. Todo dado simulado deve levar `"source": "demo"`.
 
+## Ambiente (Docker)
+
+- [ ] Colocar o projeto em Docker para que todos rodem a API e os testes com o mesmo ambiente.
+- **Por quê:** o `pytest` falha na preparação se faltar alguma dependência. O `tests/conftest.py` roda `pipeline/make_dev_fixtures.py`, que precisa do `pillow` do `pipeline/requirements.txt`, e esse arquivo não é instalado junto com o `backend/requirements.txt`.
+- **O que a imagem deve ter:** Python 3.12 (versão em que as dependências foram testadas), `backend/requirements.txt` e `pipeline/requirements.txt`.
+- **Comandos esperados:** um para subir a API (`uvicorn app.main:app` na porta 8000) e outro para rodar o `pytest`, os dois sem instalar nada na máquina.
+- Variáveis secretas (`JWT_SECRET`, `SEED_GOV_PASSWORD`) entram pelo `.env`, nunca na imagem.
+
 ## Segurança (antes de publicar a API)
 
 - [ ] Trocar `JWT_SECRET` e `SEED_GOV_PASSWORD` no `.env`. Hoje são os valores de exemplo.
