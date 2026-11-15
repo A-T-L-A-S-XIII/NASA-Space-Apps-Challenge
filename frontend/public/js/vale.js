@@ -215,6 +215,7 @@
           <aside class="v-side">
             <section class="v-card v-status" id="vStatus">${loading()}</section>
             <section class="v-card v-forecast" id="vForecast"><h2 class="v-h2">Previsão · próximos 7 dias</h2>${loading("Buscando previsão…")}</section>
+            <section class="v-card v-scenario" id="vCenario" aria-labelledby="h-cen"><h2 class="v-h2" id="h-cen">Cenário · e se chover assim?</h2>${loading("Montando o cenário…")}</section>
             <a class="btn btn-primary v-cta" href="#/vale/dados">Ver dados detalhados ${WW.icon.chevron}</a>
           </aside>
         </div>
@@ -258,7 +259,8 @@
       WW.$("#vImages", root).innerHTML = "";
     });
 
-    api("/api/previsao").then((f) => {
+    const previsaoP = api("/api/previsao");
+    previsaoP.then((f) => {
       WW.$("#vForecast", root).innerHTML = `<div class="v-card-head"><h2 class="v-h2">Previsão · próximos 7 dias</h2>${WW.sourceTag(f.origem, { previsao: true })}</div>${forecastHTML(f)}`;
       const tp = WW.$("#vTechPrev", root);
       if (tp) tp.innerHTML = `<h3 class="v-h3">Previsão · série diária</h3>
@@ -267,6 +269,45 @@
         <p class="v-foot-note">${WW.esc(f.fonte)} · lat ${f.lat}, lon ${f.lon} · gerado em ${WW.esc(f.gerado_em)} (UTC)</p>`;
     }).catch((e) => {
       WW.$("#vForecast", root).innerHTML = `<h2 class="v-h2">Previsão · próximos 7 dias</h2>${failed(e)}`;
+    });
+
+    /* ---------------- cenário simulado: chuva prevista + o que o radar viu em julho ---------------- */
+    const cenEl = WW.$("#vCenario", root);
+    Promise.all([loadBase(), previsaoP.catch(() => null)]).then(([d, f]) => {
+      const u = WW.api.user();
+      const cities = d.region.cities;
+      const sede = cities.find((c) => c.name === (u && u.city)) || cities.find((c) => c.name === "Lajeado") || cities[0];
+      const s = situacao(d, sede.lon, sede.lat);
+      const temPrevisao = !!(f && f.dias.length);
+      let modo = temPrevisao ? "agora" : "teste";
+      const desenhar = () => {
+        const chuva = modo === "agora" ? f.chuva_total_mm : WW.cenario.TESTE_MM;
+        const c = WW.cenario({ chuva_mm: chuva, cidade: sede.name, dist_km: s.best ? s.best.km : null, data_julho: s.best ? s.best.data : null });
+        const btn = (m, txt, off) => `<button type="button" class="sc-opt" data-modo="${m}" aria-pressed="${modo === m}"${off ? " disabled" : ""}>${txt}</button>`;
+        cenEl.innerHTML = `
+          <div class="v-card-head"><h2 class="v-h2" id="h-cen">Cenário · e se chover assim?</h2><span class="src-tag src-demo"><span class="sr-only">Fonte: </span>Simulado</span></div>
+          <div class="sc-toggle" role="group" aria-label="Chuva usada no cenário">
+            ${btn("agora", temPrevisao ? `Chuva prevista · ${WW.fmt(f.chuva_total_mm, 0)} mm` : "Chuva prevista · indisponível", !temPrevisao)}
+            ${btn("teste", `Chuva forte de teste · ${WW.cenario.TESTE_MM} mm`)}
+          </div>
+          ${c.alerta ? `<div class="sc-alert" role="alert"><b>${WW.icon.pin.replace("<svg", '<svg width="14" height="14"')} ${WW.esc(c.alerta.titulo)}</b><span>${WW.esc(c.alerta.texto)}</span></div>` : ""}
+          <div class="v-status-top">${levelBadge(c.nivel, c.label)}<span class="kicker">7 dias · ${WW.esc(sede.name)}</span></div>
+          <p class="v-frase">${WW.esc(c.frase)}</p>
+          <h3 class="v-h3">O que fazer</h3>
+          <ul class="sc-tips">${c.sugestoes.map((t) => `<li>${WW.esc(t)}</li>`).join("")}</ul>
+          <p class="fc-note">${WW.esc(WW.cenario.AVISO)}</p>`;
+      };
+      cenEl.addEventListener("click", (e) => {
+        const b = e.target.closest(".sc-opt");
+        if (!b || b.disabled || b.dataset.modo === modo) return;
+        modo = b.dataset.modo;
+        desenhar();
+        const foco = WW.$(`.sc-opt[data-modo="${modo}"]`, cenEl);
+        if (foco) foco.focus();
+      });
+      desenhar();
+    }).catch((e) => {
+      cenEl.innerHTML = `<h2 class="v-h2">Cenário · e se chover assim?</h2>${failed(e)}`;
     });
 
     /* ---------------- busca por cidade ou bairro ---------------- */

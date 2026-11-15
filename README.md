@@ -4,6 +4,10 @@ NASA Space Apps 2026 · Challenge "Dancing with the SARs" · Local Event: Goiân
 
 **Live demo:** https://nasa-space-apps-challenge-two.vercel.app (no account needed: choose **"Entrar como visitante"** on the login card). The API is on Render's free plan: the first visit after 15 minutes idle can take about a minute.
 
+![Taquari Valley screen: map of the area observed by NISAR and the simulated rain scenario card](docs/img/app-vale-cenario.png)
+
+The **"Cenário · e se chover assim?"** card is a simulation, labelled "Simulado" on screen: it combines the live 7-day rain forecast (Open-Meteo) with the water NISAR saw near the town in July 2026 to show how the app would warn people. Its thresholds (30 and 80 mm in 7 days) are for demonstration and are not calibrated; it is not a flood forecast.
+
 > **Prototype.** The Taquari Valley screens show the 19 processed NISAR passes; the globe and the region drill-down use simulated values, labelled "simulado" on screen.
 > Candidate water-change indicator — not a validated flood map. Not for evacuation or route decisions.
 
