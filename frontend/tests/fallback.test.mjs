@@ -109,6 +109,35 @@ test("API ligada: usa as rotas do main, converte os campos e repassa a origem", 
   assert.equal(api.url("/api/nisar/geojson?mes=2026-07&download=true"), "/api/regions/vale-do-taquari/export?format=geojson&month=2026-07");
 });
 
+test("previsão: com a API sem dias (429 da Open-Meteo no Render), o navegador consulta a Open-Meteo direto", async () => {
+  const { api, pedidos } = loadApi(async (url) => {
+    if (url === "/api/regions/vale-do-taquari/forecast") {
+      return resposta(200, JSON.stringify({ source: "open-meteo", live: false, kind: "Previsão do tempo", lat: -29.42, lon: -51.93,
+        generated_at: null, total_rain_mm: 0, summary: "Sem previsão para os próximos dias.", days: [],
+        error: "Falha ao consultar a Open-Meteo: 429 Too Many Requests" }));
+    }
+    if (url.startsWith("https://api.open-meteo.com/v1/forecast?")) {
+      return resposta(200, JSON.stringify({ daily: { time: ["2026-11-15", "2026-11-16"], precipitation_sum: [14.2, 0.4],
+        precipitation_probability_max: [90, 20], temperature_2m_min: [18, 17], temperature_2m_max: [26, 28] } }));
+    }
+    return resposta(404, "{}");
+  });
+  const f = await api.get("/api/previsao");
+  assert.equal(f.origem, "open-meteo");
+  assert.equal(f.dias.length, 2);
+  // api.js roda em outro contexto (vm): compara pelo JSON, não pelo protótipo
+  assert.deepEqual(JSON.parse(JSON.stringify(f.dias[0])), { data: "2026-11-15", chuva_mm: 14.2, prob_chuva: 90, tmin: 18, tmax: 26 });
+  assert.equal(f.chuva_total_mm, 14.6);
+  assert.equal(f.frase, "Chuva prevista de 14,6 mm nos próximos 2 dias, mais forte em 15/11.");
+  assert.match(pedidos[1], /latitude=-29.42&longitude=-51.93&.*forecast_days=7/);
+});
+
+test("previsão: se a Open-Meteo direta também falhar, mostra o erro da API", async () => {
+  const { api } = loadApi(async (url) => (url.includes("open-meteo") ? resposta(429, "{}")
+    : resposta(200, JSON.stringify({ lat: -29.42, lon: -51.93, days: [], error: "Falha ao consultar a Open-Meteo: 429" }))));
+  await assert.rejects(api.get("/api/previsao"), { status: 502, message: /429/ });
+});
+
 test("nenhum fetch fora de js/api.js", () => {
   for (const nome of ["app", "components", "explore", "globe", "home", "login", "modes", "radar-highlight", "vale"]) {
     assert.doesNotMatch(arquivo(`js/${nome}.js`), /\bfetch\s*\(|XMLHttpRequest|localhost:8000/, `${nome}.js`);
