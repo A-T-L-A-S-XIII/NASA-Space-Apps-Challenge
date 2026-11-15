@@ -1,17 +1,39 @@
-# Ferramentas locais de desenvolvimento (não fazem parte do projeto)
-.claude/
-CLAUDE.md
-**/CLAUDE.md
-AGENTS.md
-**/AGENTS.md
-.mcp.json
-.cursor/
-.cursorrules
-.windsurf/
-.aider*
-.codex/
-.gemini/
-.github/copilot-instructions.md
-Skills/
-skills-zip/
-instalar-skills.sh
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+*.tsbuildinfo
+
+# Data: raw products are large and never committed (see docs/DATA.md)
+data/raw/
+*.h5
+*.he5
+*.nc
+*.zip
+*.SAFE/
+
+# Generated: DEV FIXTURE data and the static API export.
+# The static export is committed only after it is built from validated data/demo.
+data/fixtures/
+frontend/public/api/
+
+# Local databases (backend accounts and tests)
+*.db
+
+# Secrets and local environment
+.env
+.netrc
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

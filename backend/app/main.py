@@ -8,7 +8,8 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.db import SessionLocal, create_tables
-from app.routers import auth, climate, regions
+from app.routers import api, auth, climate, regions
+from app.services.store import DatasetMissing
 from app.services.users import ensure_seed_gov
 
 
@@ -20,7 +21,12 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app = FastAPI(
+    title=settings.app_name,
+    description="Serves precomputed radar water-change layers and statistics. "
+                "Candidate water-change indicator — not a validated flood map.",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,8 +47,14 @@ async def validation_error(request, exc: RequestValidationError):
     )
 
 
+@app.exception_handler(DatasetMissing)
+async def dataset_missing(request, exc: DatasetMissing):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
 app.include_router(auth.router)
 app.include_router(regions.router)
+app.include_router(api.router)
 app.include_router(climate.router)
 
 
