@@ -29,6 +29,7 @@ class DemoProvider(WaterProvider):
     source = "demo"
 
     def water_mask(self, region: dict, month: str) -> WaterMask:
+        month = month[:7]  # o demo não tem dia: um dia vira o mês dele
         level = demo_level(region["id"], month)
         event = DEMO_DATA.get(region["id"], {}).get("events", {}).get(month)
         geometry = _river_buffer(region["id"], BASE_HALF_WIDTH_M * level)

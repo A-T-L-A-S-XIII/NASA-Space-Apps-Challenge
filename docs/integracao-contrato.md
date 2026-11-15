@@ -1,13 +1,15 @@
 # Contrato de integração frontend ↔ backend
 
-Levantamento feito em 15/11/2026, antes de mexer em qualquer lógica.
+Levantamento feito em 15/11/2026, antes de mexer em qualquer lógica. Atualizado no mesmo dia, depois que o
+backend passou a servir o evento NISAR da equipe (`/event`, `/passes` e datas por dia): as lacunas 1, 2, 3, 5
+e 6 foram resolvidas ou reduzidas (veja a seção 2).
 
 - **Frontend:** `frontend/` (Next.js 15, JavaScript). Hoje roda sem backend: toda leitura de dados passa por
   `lib/nisarService.js`, e a sessão é falsa (`lib/sessao.js`).
 - **Backend:** `backend/` (FastAPI). Fontes conferidas: `app/schemas.py`, `app/routers/*.py`,
   `backend/frontend-api.ts` e o `/openapi.json` do servidor rodando (32 rotas).
 - **URL da API no frontend:** `NEXT_PUBLIC_API_URL` (ver `frontend/.env.local.example`).
-  Atenção: o comentário de uso em `backend/frontend-api.ts` ainda fala em `NEXT_PUBLIC_API_BASE`.
+  O exemplo de uso em `backend/frontend-api.ts` já usa esse nome.
 
 ## 1. Tabela de funções → endpoints
 
@@ -17,12 +19,12 @@ Legenda da coluna "Situação": ✅ cobre · 🟡 cobre em parte (precisa adapta
 
 | Função (quem usa) | O frontend espera | Endpoint que substitui | O backend devolve | Falta ou muda de nome | Situação |
 |---|---|---|---|---|---|
-| `obterEvento()` (`/painel`, `/analise`, `PalcoMapa`, `Metadados`) | `{ nisar, cenas, indiceAtual, limites, centro, arquivos, limitacoes }`. `nisar` = conteúdo de `data/taquari/dados.json`: `evento`, `local`, `satelite`, `produto`, `data_antes`, `data_depois` (AAAA-MM-DD), `agua_antes_km2`, `agua_depois_km2`, `area_alagada_km2`, `limites_leaflet`, `fonte`. `cenas` = 4 itens `{ data, tipo: 'observado'\|'previsto', rotulo, radar: 'antes'\|'depois', expansaoKm }`. `limites` = `{ sul, oeste, norte, leste }`. `centro` = `{ lat, lon }`. `arquivos` = URLs de `ilustrado`, `ilustradoDepois`, `radarAntes`, `radarDepois`, `geojson`. `limitacoes` = lista de frases. | `GET /api/regions/vale-do-taquari/compare?before=2026-07&after=2026-07` (mais perto) + `GET /api/regions/vale-do-taquari` + `GET /api/regions/vale-do-taquari/nisar-processed` | `Compare`: `before`/`after` com `date` (AAAA-MM), `water_area_km2`, `status`, `cidades_atingidas`, `geojson`, `browse_url`, `browse_date`; mais `delta_km2`, `delta_pct`, `summary`, `source`, `note`. `Region`: `bbox` `[lon_min, lat_min, lon_max, lat_max]`, `center` `[lat, lon]`. | Não há "evento". `data_antes`/`data_depois` → `before.date`/`after.date`, mas só por **mês**. `agua_antes_km2`/`agua_depois_km2` → `before/after.water_area_km2`. `area_alagada_km2` (água **nova**, 4,2 km²) ≠ `delta_km2` (diferença das áreas totais). `limites_leaflet` → precisa converter `bbox`; e o bbox da região (−29,05 a −29,85) é maior que o da cena (−29,15 a −29,55). Faltam `evento`, `local`, `satelite`, `produto`, `fonte`, `cenas`, `indiceAtual`, `arquivos` (imagens), `limitacoes`. Em jul/2026 o backend devolve **`source: "demo"`**, não o NISAR real. | ❌ |
-| `obterAlagamento()` (`/painel`, `/analise`) | GeoJSON com 134 polígonos, `properties.classe` (`'alagado'`, talvez `'vegetacao_alagada'`). O frontend acrescenta `area_km2`, `centroide`, `totalKm2` e `classes` em `lib/taquari.js`. | `GET /api/regions/vale-do-taquari/water-mask?date=2026-07` | `WaterMaskCollection`: 1 feature (MultiPolygon) com `properties` `date`, `water_area_km2`, `anomaly_pct`, `status`, `event`, `source`, `cidades_atingidas`, `note`. | A mancha do backend é a **água total do mês**; a do frontend é a **água nova** entre duas datas. Falta `classe` por polígono (o frontend usa `classes.includes('vegetacao_alagada')`). Para jul/2026 vem `source: "demo"`. Os cálculos de área/centroide podem continuar no frontend. | 🟡 |
+| `obterEvento()` (`/painel`, `/analise`, `PalcoMapa`, `Metadados`) | `{ nisar, cenas, indiceAtual, limites, centro, arquivos, limitacoes }`. `nisar` = conteúdo de `data/taquari/dados.json`. `cenas` = 4 itens `{ data, tipo, rotulo, radar, expansaoKm }`. `limites` = `{ sul, oeste, norte, leste }`. `arquivos` = URLs das imagens. `limitacoes` = frases. | `GET /api/regions/vale-do-taquari/event` | `NisarEvent`: **os mesmos campos do `dados.json`** (`evento`, `local`, `satelite`, `produto`, `data_antes`, `data_depois`, `agua_antes_km2`, `agua_depois_km2`, `area_alagada_km2`, `limites_leaflet`, `arquivos`, `fonte`) + `region_id`, `source: "nisar"`, `note`, `poligonos`. | `nisar` sai direto da resposta. `limites`/`centro` continuam derivados de `limites_leaflet` no frontend. `arquivos` traz só os nomes: as imagens seguem em `public/nisar/`. Sem equivalente: `cenas`, `indiceAtual` (linha do tempo com previsão) e `limitacoes`. | 🟡 |
+| `obterAlagamento()` (`/painel`, `/analise`) | GeoJSON com 134 polígonos, `properties.classe`. O frontend acrescenta `area_km2`, `centroide`, `totalKm2` e `classes` em `lib/taquari.js`. | `GET /api/regions/vale-do-taquari/water-mask?date=2026-07-23` | `WaterMaskCollection` com `source: "nisar"`: 1 feature (MultiPolygon, a união dos 134 polígonos de água nova), `water_area_km2` ≈ 4,14, `cidades_atingidas` (água a até 1,2 km do centro), `note`. | Os polígonos vêm **unidos** numa feature só, sem `classe` por polígono (o frontend usa `classes.includes('vegetacao_alagada')`; hoje só existe `alagado`). Se o frontend precisar dos polígonos separados, falta uma rota para o `area_alagada.json` cru. | 🟡 |
 | `obterPrevisao()` (`/painel`, `PainelBusca`) | `{ probabilidade, intervalo: [min, max], horizonteHoras, nivel, areaPorCena: [4 números], fatores: [frases] }` — **simulada**. | — | — | O backend não faz previsão de propósito (os avisos dizem "não é previsão"). Continua local e marcada como simulada. | ❌ |
 | `buscarLocalidade(texto)` (`PainelBusca`) | Até 5 itens `{ nome, uf, lon, lat, status: 'afetada'\|'risco'\|'segura'\|'fora', distanciaKm, areaProximaKm2 }`. | `GET /api/regions/vale-do-taquari` (lista `cities`) + `GET /api/exposure?lat=&lon=` | `Region.cities`: 8 cidades `{ id, name, lat, lon }`. `Exposure`: `inside_aoi`, `latest.state`, `nearest_candidate_water.distance_m`, `history`, `statements`. | A busca de texto não existe: filtrar `cities` no frontend. `nome` → `name`, sem `uf`. O frontend tem 20 localidades e o backend 8. `status` precisa ser derivado (`inside_aoi=false` → `'fora'`; distância → afetada/risco/segura). `distanciaKm` ← `distance_m / 1000`. Sem `areaProximaKm2`. **`/api/exposure` hoje responde 503** (falta `data/demo/manifest.json`). | 🟡 |
 | `obterAreaPorMunicipio()` (`/analise`, `AreaPorMunicipio`) | Lista `{ municipio, areaKm2, poligonos }`, ordenada pela área. | `GET /api/stats` (`per_locality`) ou `GET /api/regions/vale-do-taquari/recurrence?geometry=false` (`cities`) | `Stats.per_locality[]`: `locality_id`, `name`, `per_date[{ date_id, candidate_water_km2, valid_fraction }]`. `Recurrence.cities[]`: `city_id`, `name`, `class`, `flooded_share`. | `municipio` → `name`, `areaKm2` → `candidate_water_km2` da data escolhida. Sem `poligonos`. `/api/stats` hoje responde 503. `recurrence` é Sentinel-1 histórico (fração alagada, não km²). | 🟡 |
-| `obterPassagens()` (`/analise`, `PassagensNisar`, `Metadados`) | `data/taquari/passagens.json`: `passagens[]` `{ n, data (AAAA-MM-DD), trilha, agua_km2, cheia_km2, seca_km2, na_janela_da_enchente, granulo, img, orbita }`, `puladas[] { data, motivo }`, `limites`. | `GET /api/regions/vale-do-taquari/nisar-processed` | `NisarProcessed.scenes[]`: `date`, `acquisition_time`, `granule`, `track`, `flight_direction`, `polarization`, `method`, `threshold_db`, `water_area_km2`, `valid_fraction`, `scene_coverage`, `pixel_size_m`, `bbox`, `processed_at`, `file`. | Hoje só **1** cena (31/10/2026), não 19. `data` → `date`, `trilha` → `track`, `agua_km2` → `water_area_km2`, `granulo` → `granule`, `orbita` → `flight_direction` (`ASCENDING`/`DESCENDING`, em inglês). Faltam `n`, `cheia_km2`, `seca_km2`, `na_janela_da_enchente`, `img` e a lista `puladas`. Ordem invertida (backend: mais recente primeiro). | ❌ |
+| `obterPassagens()` (`/analise`, `PassagensNisar`, `Metadados`) | `data/taquari/passagens.json`: `passagens[]` `{ n, data, trilha, agua_km2, cheia_km2, seca_km2, na_janela_da_enchente, granulo, img, orbita }`, `puladas[]`, `limites`. | `GET /api/regions/vale-do-taquari/passes` | `NisarPasses`: **os mesmos campos do `passagens.json`** + `region_id`, `source: "nisar"`, `note`, `count`. | Nada falta. `img` é só o nome: o quadro segue em `public/nisar/passagens/`. (`/nisar-processed` é outra coisa: as manchas do `scripts/process_nisar.py`.) | ✅ |
 | `URL_GEOJSON` (botão de download em `/analise`) | URL do arquivo `area_alagada.geojson`. | `GET /api/download/geojson` ou a própria resposta de `/water-mask` | GeoJSON de estatísticas por localidade / mancha do mês. | Conteúdo diferente (não é a água nova de 11/07→23/07). `/api/download/*` hoje responde 503. | 🟡 |
 
 ### `lib/sessao.js`
@@ -46,23 +48,18 @@ Legenda da coluna "Situação": ✅ cobre · 🟡 cobre em parte (precisa adapta
 
 ## 2. Lacunas: o que não tem equivalente no backend
 
-1. **Datas por dia.** O frontend trabalha com AAAA-MM-DD (11/07, 23/07, 29/07, 04/08; 19 passagens com dia).
-   `/timeline`, `/water-mask`, `/water-mask/frames` e `/compare` só aceitam AAAA-MM
-   (`?date=2026-07-23` → 422 "Mês inválido"). Antes e depois do evento caem no **mesmo mês**, então
-   `/compare?before=2026-07&after=2026-07` compara o mês com ele mesmo. Só `/nisar-processed` tem dia.
-2. **Catálogo das 19 passagens** (`data/taquari/passagens.json`). Não existe rota. `/nisar-processed` tem 1 cena
-   (31/10/2026) e não traz `cheia_km2`, `seca_km2`, `na_janela_da_enchente`, `img`, `n` nem `puladas`.
-   Já está em `backend/PENDENCIAS.md` ("Servir o NISAR já processado").
-3. **Metadados do evento** (`data/taquari/dados.json`). Não existe o conceito de "evento"
-   (nome, local, par de datas antes/depois, água antes/depois, água nova, satélite, produto, fonte).
+1. ~~**Datas por dia.**~~ **Resolvido.** `/timeline`, `/water-mask`, `/water-mask/frames` e `/compare` aceitam
+   AAAA-MM-DD além de AAAA-MM. `/compare?before=2026-07-11&after=2026-07-23` dá `delta_km2` ≈ 4,14 (água nova).
+   Dia sem passagem real volta como o mês dele.
+2. ~~**Catálogo das 19 passagens.**~~ **Resolvido:** `GET /api/regions/{id}/passes`, com os campos do `passagens.json`.
+3. ~~**Metadados do evento.**~~ **Resolvido:** `GET /api/regions/{id}/event`, com os campos do `dados.json`.
 4. **Id da região.** Frontend usa `taquari`; backend usa `vale-do-taquari` (`/api/regions/taquari` → 404).
    O `areaCadastrada: 'taquari'` da sessão e o `id` em `data/regioes.js` precisam ser mapeados.
-5. **O NISAR real de julho/2026 não está no backend.** Para 2026-07 o backend devolve mancha **demo**
-   (29,56 km², `source: "demo"`). O dado real do evento (4,2 km² de água nova, 134 polígonos) só existe no frontend.
-   Ligar o frontend no backend hoje trocaria dado real por ilustrativo na tela principal.
-6. **Água nova × água total.** O frontend mostra a água **nova** entre duas cenas (`area_alagada_km2`,
-   `alagado.png`, GeoJSON por polígono com `classe`). O backend dá a água **total** do mês e a diferença
-   de áreas (`delta_km2`), que não é a mesma coisa.
+5. **NISAR real de julho/2026: resolvido por dia.** `?date=2026-07-11` e `2026-07-23` devolvem o dado real
+   (`source: "nisar"`). Pedindo o **mês** `2026-07`, ainda vem demo: a série mensal não mistura água nova com
+   água total. O frontend deve pedir por dia.
+6. **Água nova × água total: reduzido.** Nos dias do evento, a mancha e o `delta_km2` são a água **nova**,
+   como no frontend; a água total de cada cena está no `/event`. Falta `classe` por polígono (a mancha vem unida).
 7. **Imagens do radar e mapa ilustrado.** `radar_antes/depois.webp`, `ilustrado*.webp`, máscaras e os 19 quadros
    de `public/nisar/passagens/` não são servidos pelo backend. `/api/files/` só serve `layers/*.png` do dataset
    `data/demo`, que não existe.

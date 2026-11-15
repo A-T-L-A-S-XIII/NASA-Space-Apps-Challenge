@@ -4,8 +4,8 @@ from app import providers
 from app.data.regions import REGIONS, bbox_to_wkt
 from app.routers.deps import region_or_404
 from app.providers.nisar import processed_scenes
-from app.schemas import NisarProcessed, Recurrence, Region, RegionStatus, ScenesResponse
-from app.services import asf, sentinel1
+from app.schemas import NisarEvent, NisarPasses, NisarProcessed, Recurrence, Region, RegionStatus, ScenesResponse
+from app.services import asf, nisar_event, sentinel1
 from app.services.status import region_status
 
 router = APIRouter(prefix="/api/regions", tags=["Regiões"])
@@ -66,6 +66,29 @@ def nisar_processed(region: dict = Depends(region_or_404)):
     scenes = [{k: v for k, v in s.items() if k != "geometry"} for s in processed_scenes(region["id"])]
     scenes.reverse()
     return {"region_id": region["id"], "count": len(scenes), "scenes": scenes}
+
+
+@router.get("/{region_id}/event", response_model=NisarEvent, summary="Evento NISAR mais recente",
+            responses={404: {"description": "Região não encontrada ou sem evento processado"}})
+def event(region: dict = Depends(region_or_404)):
+    """Metadados do evento processado pela equipe: cenas de antes e depois (por dia), água total em cada
+    uma e a água nova entre elas. A mancha da água nova sai em `/water-mask?date=<data_depois>`."""
+    data = nisar_event.event_response(region["id"])
+    if data is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhum evento NISAR processado para esta região")
+    return data
+
+
+@router.get("/{region_id}/passes", response_model=NisarPasses, summary="Catálogo das passagens NISAR",
+            responses={404: {"description": "Região não encontrada ou sem catálogo de passagens"}})
+def passes(region: dict = Depends(region_or_404)):
+    """Todas as passagens NISAR processadas pela equipe, com a área de água de cada uma por trilha, e as
+    que foram descartadas. Não traz geometria. Diferente de `/nisar-processed`, que lista as manchas
+    geradas por `scripts/process_nisar.py`."""
+    data = nisar_event.passes_response(region["id"])
+    if data is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma passagem NISAR catalogada para esta região")
+    return data
 
 
 @router.get("/{region_id}/recurrence", response_model=Recurrence, response_model_by_alias=True,

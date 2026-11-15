@@ -7,11 +7,13 @@ Tudo aqui é independente da fonte: os dados vêm de um WaterProvider
 import asyncio
 import csv
 import io
+import re
+import statistics
 from datetime import date, datetime, timedelta, timezone
 
 from app.data.regions import bbox_to_wkt
 from app.providers import WaterMask, WaterProvider
-from app.services import asf, enso, geo
+from app.services import asf, enso, geo, nisar_event
 
 MONTH_NAMES = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -45,6 +47,35 @@ def parse_month(value: str, field: str) -> str:
     return normalized
 
 
+DAY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def is_day(value: str) -> bool:
+    return len(value) == 10
+
+
+def parse_date(value: str, field: str) -> str:
+    """Aceita "YYYY-MM" (mês) ou "YYYY-MM-DD" (dia de uma passagem). Recusa datas no futuro."""
+    if not is_day(value):
+        return parse_month(value, field)
+    try:
+        if not DAY_PATTERN.match(value):
+            raise ValueError
+        day = date.fromisoformat(value)
+        if day.year < 1950:
+            raise ValueError
+    except ValueError:
+        raise InvalidMonth(f"Data inválida em '{field}': use o formato AAAA-MM-DD (ex.: 2026-07-23) ou AAAA-MM")
+    if day > date.today():
+        raise InvalidMonth(f"A data em '{field}' está no futuro")
+    return value
+
+
+def day_bounds(start: str, end: str) -> tuple[str, str]:
+    """Primeiro e último dia do intervalo, com start/end em mês ou dia (para comparar como texto)."""
+    return (start if is_day(start) else f"{start}-01"), (end if is_day(end) else f"{end}-31")
+
+
 def current_month() -> str:
     return date.today().strftime("%Y-%m")
 
@@ -62,7 +93,12 @@ def month_range(start: str, end: str) -> list[str]:
 
 def month_label(month: str) -> str:
     """2024-05 -> "maio de 2024"."""
-    return f"{MONTH_NAMES[int(month[5:]) - 1]} de {month[:4]}"
+    return f"{MONTH_NAMES[int(month[5:7]) - 1]} de {month[:4]}"
+
+
+def date_label(value: str) -> str:
+    """2024-05 -> "maio de 2024"; 2026-07-23 -> "23 de julho de 2026"."""
+    return f"{int(value[8:])} de {month_label(value)}" if is_day(value) else month_label(value)
 
 
 def classify_status(anomaly_pct: float) -> str:
@@ -77,7 +113,7 @@ def classify_status(anomaly_pct: float) -> str:
 
 def _stats(mask: WaterMask, baseline_km2: float, region: dict) -> dict:
     area = geo.area_km2(mask.geometry, region)
-    anomaly = (area / baseline_km2 - 1) * 100
+    anomaly = mask.anomaly_pct if mask.anomaly_pct is not None else (area / baseline_km2 - 1) * 100
     return {
         "date": mask.date,
         "water_area_km2": round(area, 2),
@@ -100,7 +136,15 @@ def _overall_source(sources: set[str], provider: WaterProvider) -> str:
     return sources.pop() if len(sources) == 1 else provider.source
 
 
+def _cities(mask: WaterMask, region: dict) -> list[str]:
+    if mask.near_cities_m is not None:
+        return geo.cities_near(mask.geometry, region, mask.near_cities_m)
+    return geo.affected_cities(mask.geometry, region)
+
+
 async def timeline(provider: WaterProvider, region: dict, start: str, end: str) -> dict:
+    if is_day(start) or is_day(end):
+        return await daily_timeline(region, start, end)
     baseline_km2 = _baseline_km2(provider, region)
     climate = await enso.get_enso()
     oni_by_month = enso.by_month(climate)
@@ -131,33 +175,91 @@ async def timeline(provider: WaterProvider, region: dict, start: str, end: str) 
     }
 
 
-def water_mask_geojson(provider: WaterProvider, region: dict, month: str) -> dict:
-    mask = provider.water_mask(region, month)
+async def daily_timeline(region: dict, start: str, end: str) -> dict:
+    """Série por dia: uma linha por passagem do catálogo NISAR (passagens.json) no intervalo.
+
+    A área muda com a trilha, então a anomalia de cada passagem compara com a mediana da mesma trilha.
+    """
+    catalog = nisar_event.load_passes(region["id"])
+    passes = catalog["passagens"] if catalog else []
+    lo, hi = day_bounds(start, end)
+    by_track = {}
+    for p in passes:
+        by_track.setdefault(p["trilha"], []).append(p["agua_km2"])
+    climate = await enso.get_enso()
+    oni_by_month = enso.by_month(climate)
+
+    series = []
+    for p in passes:
+        if not lo <= p["data"] <= hi:
+            continue
+        median = statistics.median(by_track[p["trilha"]])
+        anomaly = (p["agua_km2"] / median - 1) * 100 if median else 0.0
+        oni = oni_by_month.get(p["data"][:7])
+        series.append({
+            "date": p["data"],
+            "water_area_km2": p["agua_km2"],
+            "anomaly_pct": round(anomaly, 1),
+            "status": classify_status(anomaly),
+            "oni": oni["oni"] if oni else None,
+            "enso_phase": oni["phase"] if oni else None,
+            "event": None,
+            "source": "nisar",
+            "track": p["trilha"],
+        })
+
+    note = nisar_event.passes_note() + " A anomalia compara cada passagem com a mediana da mesma trilha."
+    return {
+        "region_id": region["id"],
+        "source": "nisar",
+        "note": note if catalog else "Sem catálogo de passagens NISAR para esta região.",
+        "start": start,
+        "end": end,
+        "baseline_km2": None,
+        "enso": {"live": climate["live"], "source": climate["source"], "error": climate["error"],
+                 "snapshot_date": climate.get("snapshot_date")},
+        "series": series,
+    }
+
+
+def _collection(mask: WaterMask, provider: WaterProvider, region: dict) -> dict:
     properties = {
         **_stats(mask, _baseline_km2(provider, region, mask), region),
-        "cidades_atingidas": geo.affected_cities(mask.geometry, region),
+        "cidades_atingidas": _cities(mask, region),
         "note": mask.note,
     }
     return {
         "type": "FeatureCollection",
         "region_id": region["id"],
-        "date": month,
+        "date": mask.date,
         "source": mask.source,
         "note": mask.note,
         "features": [{"type": "Feature", "geometry": geo.to_geojson(mask.geometry), "properties": properties}],
     }
 
 
+def water_mask_geojson(provider: WaterProvider, region: dict, month: str) -> dict:
+    """Mancha do mês (YYYY-MM) ou do dia (YYYY-MM-DD). Dia sem passagem real vira o mês dele."""
+    return _collection(provider.water_mask(region, month), provider, region)
+
+
+def frame_dates(provider: WaterProvider, region: dict, start: str, end: str) -> list[str]:
+    """Meses do intervalo, ou, com start/end em dia, só os dias com passagem real."""
+    if is_day(start) or is_day(end):
+        return provider.days(region, *day_bounds(start, end))
+    return month_range(start, end)
+
+
 def frames(provider: WaterProvider, region: dict, start: str, end: str) -> dict:
     """Todas as manchas de start a end, com geometria simplificada, para a linha do tempo animada."""
     items, notes, sources = [], set(), set()
-    for month in month_range(start, end):
-        mask = provider.water_mask(region, month)
+    for when in frame_dates(provider, region, start, end):
+        mask = provider.water_mask(region, when)
         stats = _stats(mask, _baseline_km2(provider, region, mask), region)
         notes.add(mask.note)
         sources.add(mask.source)
         items.append({
-            "date": month,
+            "date": mask.date,
             "status": stats["status"],
             "water_area_km2": stats["water_area_km2"],
             "source": mask.source,
@@ -165,7 +267,7 @@ def frames(provider: WaterProvider, region: dict, start: str, end: str) -> dict:
         })
     return {
         "region_id": region["id"],
-        "source": _overall_source(sources, provider),
+        "source": _overall_source(sources, provider) if sources else provider.source,
         "note": " ".join(sorted(notes - {None})) or None,
         "start": start,
         "end": end,
@@ -182,8 +284,9 @@ def _scene_time(scene: dict) -> datetime | None:
 
 
 async def nearest_browse(region: dict, month: str) -> dict | None:
-    """Cena NISAR com imagem (browse) mais perto do dia 15 do mês, ou None."""
-    target = datetime(int(month[:4]), int(month[5:]), 15, tzinfo=timezone.utc)
+    """Cena NISAR com imagem (browse) mais perto do dia pedido (ou do dia 15 do mês), ou None."""
+    day = int(month[8:]) if is_day(month) else 15
+    target = datetime(int(month[:4]), int(month[5:7]), day, tzinfo=timezone.utc)
     window = timedelta(days=BROWSE_MAX_DAYS)
     result = await asf.search_scenes(
         bbox_to_wkt(region["bbox"]), product="GCOV",
@@ -203,12 +306,13 @@ async def compare(provider: WaterProvider, region: dict, before: str, after: str
     browse = dict(zip(["before", "after"], await asyncio.gather(
         nearest_browse(region, before), nearest_browse(region, after),
     )))
-    sides = {}
-    for key, month in [("before", before), ("after", after)]:
-        collection = water_mask_geojson(provider, region, month)
+    sides, masks = {}, {}
+    for key, when in [("before", before), ("after", after)]:
+        masks[key] = provider.water_mask(region, when)
+        collection = _collection(masks[key], provider, region)
         props = collection["features"][0]["properties"]
         sides[key] = {
-            "date": month,
+            "date": collection["date"],
             "water_area_km2": props["water_area_km2"],
             "status": props["status"],
             "cidades_atingidas": props["cidades_atingidas"],
@@ -233,7 +337,8 @@ async def compare(provider: WaterProvider, region: dict, before: str, after: str
         "delta_km2": delta_km2,
         "delta_pct": delta_pct,
         "cidades_atingidas": sides["after"]["cidades_atingidas"],
-        "summary": summary(region, sides["before"], sides["after"], delta_pct, "demo" in sources),
+        "summary": summary(region, sides["before"], sides["after"], delta_pct, "demo" in sources,
+                           near_m=masks["after"].near_cities_m),
     }
 
 
@@ -257,11 +362,20 @@ def _fall_text(status: str) -> str:
     return "a água baixou" if status == "normal" else "a água baixou, mas o rio segue acima do normal"
 
 
-def summary(region: dict, before: dict, after: dict, delta_pct: float | None, is_demo: bool) -> str:
+def summary(region: dict, before: dict, after: dict, delta_pct: float | None, is_demo: bool,
+            near_m: float | None = None) -> str:
     """Frase curta, para quem não é especialista, explicando o que mudou."""
-    when = f"Entre {month_label(before['date'])} e {month_label(after['date'])}"
+    when = f"Entre {date_label(before['date'])} e {date_label(after['date'])}"
     a, b = before["water_area_km2"], after["water_area_km2"]
 
+    if a == 0 and b > 0:
+        # Evento NISAR: a cena de antes é a referência e a de depois traz só a água nova
+        text = f"{when}, o radar NISAR detectou {_km2(b)} km² de água nova no {region['name']}, fora do leito do rio."
+        if after["cidades_atingidas"]:
+            text += (f" Ela chegou a menos de {_km2(near_m / 1000)} km do centro de "
+                     f"{_join(after['cidades_atingidas'])}." if near_m else
+                     f" A água passou a chegar às áreas urbanas de {_join(after['cidades_atingidas'])}.")
+        return text + (" (Valores ilustrativos, não são medições do NISAR.)" if is_demo else "")
     if delta_pct is None or abs(delta_pct) < 10:
         text = f"{when}, a área coberta por água no {region['name']} ficou praticamente igual (cerca de {_km2(b)} km²)."
     elif delta_pct > 0:

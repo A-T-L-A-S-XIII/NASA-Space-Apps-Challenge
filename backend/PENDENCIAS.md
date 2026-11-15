@@ -12,7 +12,8 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 
 ### Servir o NISAR já processado (`Fotos/nisar_taquari_50/`)
 
-- [ ] Criar rotas que sirvam as 19 passagens já processadas: `catalogo.json`, o GeoJSON de cheia e seca de cada data e as imagens.
+- [x] Catálogo das 19 passagens em `GET /api/regions/{id}/passes` e evento de julho/2026 em `/event` (dados copiados do frontend para `app/data/nisar/taquari/`).
+- [ ] Servir o GeoJSON de cheia e seca de cada passagem e as imagens (hoje só a água nova de 11/07 → 23/07 e os quadros ficam no frontend).
 - **Já existe:** `GET /api/regions/{id}/nisar-processed`, mas ela só serve as manchas geradas por `scripts/process_nisar.py` (hoje uma: 31/10/2026, trilha `103_A`). As 19 passagens de `Fotos/` ainda não passam pela API.
 - **Cuidado 1:** a área de água depende da trilha (órbita). A `053_D` mede de 1 a 5 km² e a `103_A` mede de 7 a 9 km², no mesmo rio. Só compare datas da **mesma trilha**.
 - **Cuidado 2:** a área processada vai de −29,15 a −29,55 de latitude, mais ou menos de Muçum a Lajeado. Estrela, Bom Retiro do Sul e Taquari ficam de fora.

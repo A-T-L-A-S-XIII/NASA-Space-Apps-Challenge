@@ -267,7 +267,7 @@ class ScenesResponse(BaseModel):
 
 # ------------------------------------------------------- água (linha do tempo)
 class TimelinePoint(BaseModel):
-    date: str = Field(description="AAAA-MM")
+    date: str = Field(description="AAAA-MM (série mensal) ou AAAA-MM-DD (série por passagem)")
     water_area_km2: float
     anomaly_pct: float = Field(description="Diferença em % para a linha de base")
     status: StatusAgua
@@ -275,6 +275,7 @@ class TimelinePoint(BaseModel):
     enso_phase: FaseEnso | None
     event: str | None
     source: str = Field(description='"demo" para dado ilustrativo')
+    track: str | None = Field(None, description="Trilha NISAR (só na série por dia). Só compare a mesma trilha")
 
 
 class EnsoSource(BaseModel):
@@ -290,13 +291,14 @@ class RegionTimeline(BaseModel):
     note: str | None
     start: str
     end: str
-    baseline_km2: float
+    baseline_km2: float | None = Field(description="Área de referência. Null na série por dia: cada trilha "
+                                                   "compara com a própria mediana")
     enso: EnsoSource
     series: list[TimelinePoint]
 
 
 class WaterMaskProperties(BaseModel):
-    date: str
+    date: str = Field(description="AAAA-MM ou AAAA-MM-DD (dia de uma passagem real)")
     water_area_km2: float
     anomaly_pct: float
     status: StatusAgua
@@ -322,7 +324,7 @@ class WaterMaskCollection(BaseModel):
 
 
 class CompareSide(BaseModel):
-    date: str
+    date: str = Field(description="AAAA-MM ou AAAA-MM-DD. Dia sem passagem real volta como o mês")
     water_area_km2: float
     status: StatusAgua
     cidades_atingidas: list[str]
@@ -333,7 +335,7 @@ class CompareSide(BaseModel):
 
 
 class WaterFrame(BaseModel):
-    date: str = Field(description="AAAA-MM")
+    date: str = Field(description="AAAA-MM, ou AAAA-MM-DD quando pedido por dia")
     status: StatusAgua
     water_area_km2: float
     source: str
@@ -561,3 +563,60 @@ class Recurrence(BaseModel):
     cities: list[CityRecurrence]
     monthly: list[MonthlyFlood] = Field(description="Só os meses com passagem, do mais antigo ao mais recente")
     geojson: FeatureCollection | None = Field(description="Manchas por classe; vazio com geometry=false")
+
+
+# -------------------------------------------------------- evento NISAR (equipe)
+# Campos em português: são os do dados.json e do passagens.json que o frontend já consome.
+class NisarEventFiles(BaseModel):
+    antes: str
+    depois: str
+    alagado: str
+    vetor: str
+
+
+class NisarEvent(BaseModel):
+    region_id: str
+    source: Literal["nisar"]
+    note: str
+    evento: str
+    local: str
+    satelite: str
+    produto: str
+    data_antes: str = Field(description="Cena de antes (AAAA-MM-DD)")
+    data_depois: str = Field(description="Cena de depois (AAAA-MM-DD)")
+    agua_antes_km2: float = Field(description="Água total na cena de antes")
+    agua_depois_km2: float = Field(description="Água total na cena de depois")
+    area_alagada_km2: float = Field(description="Água NOVA entre as duas cenas (os polígonos da mancha do dia de depois)")
+    poligonos: int = Field(description="Polígonos de água nova")
+    limites_leaflet: tuple[tuple[float, float], tuple[float, float]] = Field(
+        description="Recorte das cenas: [[sul, oeste], [norte, leste]] (formato do Leaflet)")
+    arquivos: NisarEventFiles = Field(description="Nomes das imagens, servidas pelo frontend em /nisar/")
+    fonte: str
+
+
+class NisarPass(BaseModel):
+    n: int
+    data: str = Field(description="AAAA-MM-DD")
+    trilha: str = Field(description="Ex.: 103_A_163. Só compare passagens da mesma trilha")
+    orbita: Literal["ascendente", "descendente"]
+    agua_km2: float = Field(description="Água no recorte de Muçum a Lajeado")
+    cheia_km2: float = Field(description="Água acima do normal da época")
+    seca_km2: float = Field(description="Água abaixo do normal da época")
+    na_janela_da_enchente: bool
+    granulo: str
+    img: str = Field(description="Quadro da passagem, servido pelo frontend em /nisar/passagens/")
+
+
+class NisarSkippedPass(BaseModel):
+    data: str = Field(description="AAAA-MM-DD")
+    motivo: str
+
+
+class NisarPasses(BaseModel):
+    region_id: str
+    source: Literal["nisar"]
+    note: str
+    count: int
+    passagens: list[NisarPass] = Field(description="Da mais antiga para a mais recente")
+    puladas: list[NisarSkippedPass] = Field(description="Passagens descartadas e o motivo")
+    limites: tuple[tuple[float, float], tuple[float, float]] = Field(description="[[sul, oeste], [norte, leste]]")

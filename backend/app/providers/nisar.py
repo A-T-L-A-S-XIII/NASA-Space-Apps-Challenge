@@ -1,7 +1,9 @@
-"""Manchas d'água reais do NISAR, geradas antes por scripts/process_nisar.py.
+"""Manchas d'água reais do NISAR.
 
-Para um mês com cena processada, devolve a mancha real com source="nisar".
-Para os outros meses, delega ao DemoProvider (que continua marcado como demo).
+Duas fontes reais, ambas com source="nisar":
+- o evento processado pela equipe (app/services/nisar_event.py): nos dias das cenas de antes e depois;
+- as cenas geradas por scripts/process_nisar.py: no dia da cena ou, pedindo por mês, no mês dela.
+Um dia sem cena real vira o mês dele. Nos meses sem cena, delega ao DemoProvider (marcado como demo).
 """
 
 import json
@@ -13,6 +15,7 @@ from shapely.geometry import shape
 from app.config import settings
 from app.providers.base import WaterMask, WaterProvider
 from app.providers.demo import DemoProvider
+from app.services import nisar_event
 
 
 @lru_cache(maxsize=64)
@@ -49,18 +52,55 @@ class NisarProvider(WaterProvider):
     def __init__(self):
         self.demo = DemoProvider()
 
-    def _scene_for(self, region: dict, month: str) -> dict | None:
-        """Cena mais recente processada naquele mês."""
-        in_month = [s for s in processed_scenes(region["id"]) if s["date"].startswith(month)]
-        return in_month[-1] if in_month else None
+    def _scene_for(self, region: dict, date: str) -> dict | None:
+        """Cena processada mais recente naquele mês (YYYY-MM) ou dia (YYYY-MM-DD)."""
+        found = [s for s in processed_scenes(region["id"]) if s["date"].startswith(date)]
+        return found[-1] if found else None
+
+    def _event_mask(self, region: dict, day: str) -> WaterMask | None:
+        """Mancha do evento NISAR nos dias das cenas de antes e depois.
+
+        O evento só tem os polígonos da água NOVA entre as duas cenas. Então a cena de antes é a
+        referência (mancha vazia) e a de depois traz a água nova: o delta do /compare é a água nova.
+        A anomalia vem da água total medida nas duas cenas (depois / antes).
+        """
+        event = nisar_event.load_event(region["id"])
+        if event is None or day not in (event["data_antes"], event["data_depois"]):
+            return None
+        if day == event["data_antes"]:
+            geometry, note, anomaly = nisar_event.empty_geometry(), nisar_event.before_note(event), 0.0
+        else:
+            geometry = nisar_event.new_water(region["id"])
+            if geometry is None:
+                return None
+            note = nisar_event.after_note(event, nisar_event.polygon_count(region["id"]))
+            anomaly = round((event["agua_depois_km2"] / event["agua_antes_km2"] - 1) * 100, 1)
+        return WaterMask(date=day, geometry=geometry, source="nisar", note=note,
+                         anomaly_pct=anomaly, near_cities_m=nisar_event.NEAR_CITY_M)
 
     def water_mask(self, region: dict, month: str) -> WaterMask:
-        scene = self._scene_for(region, month)
+        date = month
+        if len(date) == 10:
+            mask = self._event_mask(region, date)
+            if mask is not None:
+                return mask
+        scene = self._scene_for(region, date)
+        if scene is None and len(date) == 10:
+            date = date[:7]  # dia sem cena real: vale o mês
+            scene = self._scene_for(region, date)
         if scene is None:
-            return self.demo.water_mask(region, month)
+            return self.demo.water_mask(region, date)
         same_track = [s for s in processed_scenes(region["id"]) if s["track"] == scene["track"]]
-        return WaterMask(date=month, geometry=scene["geometry"], source="nisar",
+        return WaterMask(date=date, geometry=scene["geometry"], source="nisar",
                          note=nisar_note(scene, len(same_track)), scene=scene)
+
+    def days(self, region: dict, start: str, end: str) -> list[str]:
+        """Dias com mancha real: cenas do evento e cenas processadas."""
+        found = {s["date"] for s in processed_scenes(region["id"])}
+        event = nisar_event.load_event(region["id"])
+        if event is not None:
+            found |= {event["data_antes"], event["data_depois"]}
+        return sorted(d for d in found if start <= d <= end)
 
     def baseline(self, region: dict) -> WaterMask:
         return self.demo.baseline(region)
@@ -70,7 +110,7 @@ class NisarProvider(WaterProvider):
 
         A referência é a cena de área mediana da trilha. Com uma cena só, a anomalia fica 0.
         """
-        if mask.source != "nisar":
+        if mask.source != "nisar" or mask.scene is None:
             return self.demo.baseline(region)
         track = mask.scene["track"]
         same = sorted((s for s in processed_scenes(region["id"]) if s["track"] == track),

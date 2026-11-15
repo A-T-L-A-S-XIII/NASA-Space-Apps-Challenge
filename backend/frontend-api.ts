@@ -7,8 +7,11 @@
  *
  * Uso:
  *   import { createApi } from "@/lib/frontend-api";
- *   const api = createApi(process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000");
+ *   const api = createApi(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
  *   const status = await api.regionStatus("vale-do-taquari");
+ *   const evento = await api.event("vale-do-taquari");
+ *
+ * Datas: as rotas de água aceitam "AAAA-MM" (mês) ou "AAAA-MM-DD" (dia de uma passagem NISAR).
  *
  * Dados com `source: "demo"` são ilustrativos: mostre sempre o selo e o `note`.
  */
@@ -76,7 +79,7 @@ export interface ScenesResponse {
 
 // --------------------------------------------------------------------- água
 export interface TimelinePoint {
-  /** AAAA-MM */
+  /** AAAA-MM (série mensal) ou AAAA-MM-DD (série por passagem) */
   date: string;
   water_area_km2: number;
   anomaly_pct: number;
@@ -85,6 +88,8 @@ export interface TimelinePoint {
   enso_phase: FaseEnso | null;
   event: string | null;
   source: DataSource;
+  /** Trilha NISAR. Só na série por dia; só compare pontos da mesma trilha */
+  track?: string;
 }
 
 export interface EnsoSource {
@@ -99,7 +104,8 @@ export interface RegionTimeline {
   note: string | null;
   start: string;
   end: string;
-  baseline_km2: number;
+  /** null na série por dia: cada trilha compara com a própria mediana */
+  baseline_km2: number | null;
   enso: EnsoSource;
   series: TimelinePoint[];
 }
@@ -173,6 +179,60 @@ export interface Compare {
   cidades_atingidas: string[];
   /** Frase para o cidadão leigo */
   summary: string;
+}
+
+// ------------------------------------------------- evento NISAR (equipe)
+// Campos em português: os mesmos de frontend/data/taquari/dados.json e passagens.json.
+export interface NisarEvent {
+  region_id: string;
+  source: "nisar";
+  note: string;
+  evento: string;
+  local: string;
+  satelite: string;
+  produto: string;
+  /** Cena de antes (AAAA-MM-DD) */
+  data_antes: string;
+  /** Cena de depois (AAAA-MM-DD) */
+  data_depois: string;
+  /** Água total em cada cena */
+  agua_antes_km2: number;
+  agua_depois_km2: number;
+  /** Água NOVA entre as cenas: a mancha de waterMask(id, data_depois) */
+  area_alagada_km2: number;
+  poligonos: number;
+  /** [[sul, oeste], [norte, leste]] (formato do Leaflet) */
+  limites_leaflet: [[number, number], [number, number]];
+  /** Nomes das imagens em frontend/public/nisar/ */
+  arquivos: { antes: string; depois: string; alagado: string; vetor: string };
+  fonte: string;
+}
+
+export interface NisarPass {
+  n: number;
+  /** AAAA-MM-DD */
+  data: string;
+  /** Ex.: "103_A_163". Só compare passagens da mesma trilha */
+  trilha: string;
+  orbita: "ascendente" | "descendente";
+  agua_km2: number;
+  /** Água acima / abaixo do normal da época */
+  cheia_km2: number;
+  seca_km2: number;
+  na_janela_da_enchente: boolean;
+  granulo: string;
+  /** Quadro em frontend/public/nisar/passagens/ */
+  img: string;
+}
+
+export interface NisarPasses {
+  region_id: string;
+  source: "nisar";
+  note: string;
+  count: number;
+  passagens: NisarPass[];
+  puladas: { data: string; motivo: string }[];
+  limites: [[number, number], [number, number]];
 }
 
 // -------------------------------------------------------------------- clima
@@ -388,7 +448,11 @@ export function createApi(baseUrl = "http://localhost:8000", getToken?: () => st
     scenes: (id: string, opts: { start?: string; end?: string; product?: string; limit?: number } = {}) =>
       request<ScenesResponse>(`${region(id)}/scenes`, { query: opts }),
 
-    // Água (hoje demo)
+    // Evento NISAR processado pela equipe
+    event: (id: string) => request<NisarEvent>(`${region(id)}/event`),
+    passes: (id: string) => request<NisarPasses>(`${region(id)}/passes`),
+
+    // Água: demo, ou NISAR real nas datas com cena (date/start/end/before/after: AAAA-MM ou AAAA-MM-DD)
     timeline: (id: string, opts: { start?: string; end?: string } = {}) =>
       request<RegionTimeline>(`${region(id)}/timeline`, { query: opts }),
     waterMask: (id: string, date: string) =>

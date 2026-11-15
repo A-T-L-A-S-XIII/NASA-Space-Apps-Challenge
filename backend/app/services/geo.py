@@ -59,6 +59,16 @@ def affected_cities(geom, region: dict) -> list[str]:
     return names
 
 
+def cities_near(geom, region: dict, max_m: float) -> list[str]:
+    """Cidades com água a até max_m metros do centro (na ordem da região). Para manchas estreitas,
+    como a água nova nas margens do rio, que quase nunca cobrem 30% do núcleo urbano."""
+    if geom.is_empty:
+        return []
+    water = to_metric(geom, region)
+    return [city["name"] for city in region["cities"]
+            if water.distance(to_metric(Point(city["lon"], city["lat"]), region)) <= max_m]
+
+
 def to_geojson(geom) -> dict:
     """Geometria GeoJSON com coordenadas arredondadas (~1 m) para a resposta ficar leve."""
     return mapping(shapely.set_precision(geom, 1e-5))

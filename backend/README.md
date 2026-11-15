@@ -78,13 +78,15 @@ Rode o script de novo perto do pitch para os dados ficarem atualizados.
 | GET | `/api/regions` | Regiões monitoradas (piloto: `vale-do-taquari`) | fixo |
 | GET | `/api/regions/{id}` | Bbox, centro, cidades e traçado do rio | fixo |
 | GET | `/api/regions/{id}/status` | Resumo para o card principal: água do mês, ENSO e última cena NISAR | demo + ao vivo |
-| GET | `/api/regions/{id}/nisar-processed` | Cenas NISAR já processadas em mancha real (granule, data, trilha, limiar, área) | **NISAR real** |
+| GET | `/api/regions/{id}/nisar-processed` | Cenas NISAR já processadas por `scripts/process_nisar.py` em mancha real (granule, data, trilha, limiar, área) | **NISAR real** |
+| GET | `/api/regions/{id}/event` | Evento NISAR mais recente (hoje: julho/2026): cenas de antes e depois, água total em cada uma, água nova (4,2 km²) e nº de polígonos | **NISAR real** |
+| GET | `/api/regions/{id}/passes` | Catálogo das 19 passagens NISAR (jun–out/2026): data, trilha, órbita, água, cheia e seca; e as 9 descartadas | **NISAR real** |
 | GET | `/api/regions/{id}/recurrence` | "Recorrente ou pontual?": manchas por classe, classe de cada cidade e área alagada por mês desde 2015 (`geometry=false` para só os números) | **Sentinel-1 real** |
 | GET | `/api/regions/{id}/scenes` | Cenas NISAR do ASF (`start`, `end`, `product=GCOV`, `limit=25`) | **ao vivo** |
-| GET | `/api/regions/{id}/timeline` | Série mensal: área, anomalia, status, ONI e fase ENSO (`start=2022-01`, `end`) | demo + ONI ao vivo |
-| GET | `/api/regions/{id}/water-mask` | GeoJSON da mancha d'água (`date=AAAA-MM`), área e cidades atingidas | demo |
-| GET | `/api/regions/{id}/water-mask/frames` | Todos os meses de uma vez (`start=2022-01`, `end`; máx. 120), geometria simplificada | demo |
-| GET | `/api/regions/{id}/compare` | Antes/depois (`before`, `after`), delta, frase e `browse_url` da cena NISAR mais próxima | demo + ASF |
+| GET | `/api/regions/{id}/timeline` | Série mensal: área, anomalia, status, ONI e fase ENSO (`start=2022-01`, `end`). Com dia (`AAAA-MM-DD`): uma linha por passagem NISAR, com a trilha | demo + NISAR + ONI ao vivo |
+| GET | `/api/regions/{id}/water-mask` | GeoJSON da mancha d'água (`date=AAAA-MM` ou `AAAA-MM-DD`), área e cidades atingidas | demo + NISAR |
+| GET | `/api/regions/{id}/water-mask/frames` | Todos os meses de uma vez (`start=2022-01`, `end`; máx. 120), geometria simplificada. Com dia: só os dias com mancha real | demo + NISAR |
+| GET | `/api/regions/{id}/compare` | Antes/depois (`before`, `after`, mês ou dia), delta, frase e `browse_url` da cena NISAR mais próxima | demo + NISAR + ASF |
 | GET | `/api/climate/enso` | ONI da NOAA com a fase: El Niño, La Niña ou Neutro (`start` opcional) | **ao vivo** |
 | GET | `/api/explain` | Textos para leigos (`{id, title, summary, body, icon}`) | fixo |
 | GET | `/api/explain/{topic}` | `sar`, `agua-no-radar`, `nisar`, `el-nino`, `la-nina`, `como-ler-o-mapa` | fixo |
@@ -107,6 +109,7 @@ estão em `frontend-api.ts`.
 | **ASF DAAC (NISAR)**, ao vivo | `/scenes`, `/status`, `/compare` | Catálogo público, sem login. Cache de 30 min. Se o ASF falhar: snapshot com `live: false` e `snapshot_date`; sem snapshot, lista vazia e `error`. |
 | **NOAA CPC (ONI)**, ao vivo | `/climate/enso`, `/timeline`, `/status` | Arquivo `oni.ascii.txt`. Cache de 6 h. Se a NOAA falhar: último cache com `live: false`, senão o snapshot, senão série vazia com `error`. |
 | **DemoProvider**, demo | `/timeline`, `/water-mask`, `/compare`, `/status` | Valores ilustrativos e determinísticos com `"source": "demo"` e `"note"`. Seguem a cronologia real (estiagem de 2022 ao início de 2023; enchentes de set/2023, nov/2023 e mai/2024), mas **não são medições**: o NISAR só entrou em operação depois de 2025. |
+| **Evento NISAR da equipe**, real | `/event`, `/passes`, `/water-mask`, `/compare`, `/timeline`, `/frames` com dia | Arquivos em `app/data/nisar/taquari/`, com `"source": "nisar"`. Sem os arquivos, `/event` e `/passes` dão 404 e as outras rotas usam o mês. |
 | **Sentinel-1**, processado antes | `/recurrence` | Arquivo gerado por `scripts/process_sentinel1.py` no Earth Engine, com `"source": "sentinel-1"`. Sem o arquivo, 404. |
 | **Radar processado** | `/api/timeline`, `/api/layers`... | Arquivos gerados antes pelo pipeline em `data/demo/`. Com `data/fixtures/`, as respostas vêm com `"fixture": true`. |
 
@@ -241,10 +244,31 @@ Cuidados (é um indicador de recorrência, não um mapa oficial de risco):
 - **Nem tudo que alaga é enchente.** Lavoura irrigada (arroz) e banhado no baixo Taquari podem cair em
   `recorrente`.
 
+## Evento NISAR da equipe (julho de 2026)
+
+Os dados que a equipe processou para o frontend também estão no backend, em `app/data/nisar/taquari/`
+(copiados de `frontend/data/taquari/`; as imagens continuam em `frontend/public/nisar/`):
+
+- `dados.json` → `GET /api/regions/vale-do-taquari/event`
+- `passagens.json` → `GET /api/regions/vale-do-taquari/passes` e `/timeline` com dia
+- `area_alagada.json` (134 polígonos de água **nova**) → `/water-mask?date=2026-07-23`
+
+Datas por dia (`AAAA-MM-DD`) nas rotas de água:
+
+- Nos dias das cenas do evento vem o dado real. A cena de antes (11/07) é a referência, com mancha vazia;
+  a de depois (23/07) traz a água nova. Por isso `/compare?before=2026-07-11&after=2026-07-23` dá
+  `delta_km2` ≈ 4,1: é a água **nova**, não a diferença da água total (16,8 → 20,4 km², no `/event`).
+- Nessas manchas, cidade atingida = água nova a até **1,2 km** do centro (a regra de 30% do núcleo não pega
+  as faixas estreitas na margem do rio). Nas outras manchas, a regra continua a mesma.
+- Um dia sem passagem real vira o mês dele (o `date` da resposta mostra isso). Pedir por mês (`AAAA-MM`)
+  funciona como antes: 2022–2024 continuam demo.
+- `/timeline` com dia lista as passagens do catálogo. A área muda com a trilha, então a anomalia compara
+  cada passagem com a mediana da mesma trilha.
+
 ## Próximos passos: trocar o DemoProvider por NISAR real
 
 As rotas de água só conversam com um `WaterProvider` (`app/providers/base.py`), que tem dois
-métodos: `water_mask(region, month)` e `baseline(region)`. Para usar dado real:
+métodos: `water_mask(region, month)` (mês ou dia) e `baseline(region)`. Para usar dado real:
 
 1. **Processar o GCOV fora da API** (decisão D-D: nada é processado ao vivo), num script do `pipeline/`:
    - Buscar as cenas GCOV que cobrem o bbox (o `asf_search` ou a rota `/scenes` já fazem isso).
