@@ -186,6 +186,66 @@
 
   const LEVEL = { normal: ["ok", "Sem alagamento"], atencao: ["warn", "Atenção"], alagamento: ["alert", "Alagamento"], sem_dados: ["none", "Sem dados"] };
 
+  /* ------------------------------------------------ histórico do Sentinel-1 (/recurrence) */
+  const MESES_NOME = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  const mesNome = (ym) => { const [a, m] = ym.split("-"); return `${MESES_NOME[+m - 1]} de ${a}`; };
+  const CLASSE_REC = { pontual: "Pontual", voltou: "Voltou a alagar", recorrente: "Recorrente", permanente: "Água permanente", sem_registro: "Sem registro" };
+
+  function recorrenciaHTML(r) {
+    const top = r.monthly.slice().sort((a, b) => b.flooded_km2 - a.flooded_km2).slice(0, 3);
+    const frase = `${WW.fmt(r.images, 0)} passagens do Sentinel-1 (radar europeu, banda C) entre ${dLong(r.period_start)} e ${dLong(r.period_end)}. ` +
+      `Os meses com mais água fora do leito: ${top.map((m) => `${mesNome(m.month)} (${km2(m.flooded_km2)})`).join(", ")}.`;
+    return `<p class="fc-frase">${WW.esc(frase)}</p>
+      <div class="rec-chart" id="vRecChart" role="img" aria-label="Área com água fora do leito do rio por mês, ${r.period_start.slice(0, 4)} a ${r.period_end.slice(0, 4)}. ${WW.esc(top.map((m) => `${mesNome(m.month)}: ${WW.fmt(m.flooded_km2, 1)} km²`).join("; "))}"></div>
+      <p class="fc-note rec-gap">Cada barra é um mês com passagem do satélite nesta órbita. Mês sem barra não teve passagem (o Sentinel-1B parou em dezembro de 2021): não quer dizer que não alagou.</p>
+      <dl class="v-nums rec-classes">${r.classes.map((c) => `<div><dt>${WW.esc(CLASSE_REC[c.class] || c.class)}</dt><dd>${km2(c.area_km2)}</dd><dd class="rec-desc">${WW.esc(c.description)}</dd></div>`).join("")}</dl>
+      <table class="v-table"><thead><tr><th scope="col">Cidade</th><th scope="col">Classe</th><th scope="col" class="num">Área urbana que alagou</th></tr></thead>
+        <tbody>${r.cities.map((c) => `<tr><th scope="row">${WW.esc(c.name)}</th><td>${WW.esc(CLASSE_REC[c.class] || c.class)}</td><td class="num">${WW.fmt(c.flooded_share * 100, 1)}%</td></tr>`).join("")}</tbody></table>
+      <p class="fc-note">${WW.esc(r.note)}</p>`;
+  }
+
+  function desenharSerie(el, monthly) {
+    if (!el || !monthly.length) return;
+    const w = el.clientWidth || 720, h = 170, m = { t: 22, r: 8, b: 22, l: 36 };
+    const pts = monthly.map((x) => ({ ...x, t: new Date(x.month + "-15T12:00:00") }));
+    const x = d3.scaleTime().domain([new Date(pts[0].t.getFullYear(), 0, 1), new Date(pts[pts.length - 1].t.getFullYear() + 1, 0, 1)]).range([m.l, w - m.r]);
+    const y = d3.scaleLinear().domain([0, d3.max(pts, (p) => p.flooded_km2)]).nice().range([h - m.b, m.t]);
+    const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${w} ${h}`).attr("aria-hidden", "true");
+    svg.append("g").attr("class", "rec-axis").attr("transform", `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(d3.timeYear.every(w < 500 ? 2 : 1)).tickFormat(d3.timeFormat("%Y")).tickSizeOuter(0));
+    svg.append("g").attr("class", "rec-axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickFormat((v) => `${v}`).tickSizeOuter(0));
+    svg.append("text").attr("class", "rec-unit").attr("x", m.l).attr("y", 12).text("km² com água fora do leito");
+    const bw = Math.max(2, (x(new Date(2016, 0, 1)) - x(new Date(2015, 0, 1))) / 14);
+    svg.append("g").selectAll("rect").data(pts).join("rect").attr("class", "rec-bar")
+      .attr("x", (p) => x(p.t) - bw / 2).attr("width", bw).attr("y", (p) => y(p.flooded_km2)).attr("height", (p) => y(0) - y(p.flooded_km2))
+      .append("title").text((p) => `${mesNome(p.month)}: ${WW.fmt(p.flooded_km2, 1)} km² (${p.images} passagens)`);
+    const top = pts.slice().sort((a, b) => b.flooded_km2 - a.flooded_km2).slice(0, 3);
+    svg.append("g").selectAll("text").data(top).join("text").attr("class", "rec-label").attr("text-anchor", "middle")
+      .attr("x", (p) => Math.min(w - 40, Math.max(m.l + 30, x(p.t)))).attr("y", (p) => y(p.flooded_km2) - 5)
+      .text((p) => `${MESES_NOME[p.t.getMonth()].slice(0, 3)}/${String(p.t.getFullYear()).slice(2)}`);
+  }
+
+  /* ------------------------------------------------ minha casa: em quantas das passagens o radar viu água perto */
+  const CASA = "ww-casa";
+  const lerCasa = () => { try { return JSON.parse(localStorage.getItem(CASA) || "null"); } catch (e) { return null; } };
+  const gravarCasa = (v) => { try { if (v) localStorage.setItem(CASA, JSON.stringify(v)); else localStorage.removeItem(CASA); return true; } catch (e) { return false; } };
+  let historicoP = null;
+  function historicoNisar() {
+    if (!historicoP) {
+      historicoP = Promise.all([api("/api/nisar/passagens"), api("/api/regions/vale-do-taquari/export?format=geojson").then((g) => rewind(clone(g)))])
+        .then(([ps, g]) => ({
+          passes: ps.itens,
+          cheia: g.features.filter((f) => f.properties.class === "cheia").map((f) => ({ data: f.properties.date, c: d3.geoCentroid(f) })),
+        }));
+      historicoP.catch(() => { historicoP = null; });
+    }
+    return historicoP;
+  }
+  function contarPerto(h, lon, lat, raioKm = 3) {
+    const datas = new Set(h.cheia.filter((x) => haversineKm([lon, lat], x.c) <= raioKm).map((x) => x.data));
+    const hits = h.passes.filter((p) => datas.has(p.data));
+    return { k: hits.length, n: h.passes.length, datas: hits.map((p) => p.data) };
+  }
+
   /* ================================================== tela inicial */
   WW.ValeHome = function (root) {
     root.innerHTML = `
@@ -233,6 +293,9 @@
     loadBase().then((d) => {
       data = d;
       map.set(d);
+      // a casa salva aparece sozinha (mostrar e place são da busca, abaixo; o then roda depois)
+      const casa = lerCasa();
+      if (casa && casa.nome) { WW.$("#vSearch", root).value = casa.nome; mostrar(casa); }
       const r = d.resumo, [cls, lbl] = LEVEL[r.nivel] || LEVEL.sem_dados;
       WW.$("#vStatus", root).innerHTML = `
         <div class="v-status-top">${levelBadge(cls, lbl)}<span class="kicker">${MES_NOME}</span></div>
@@ -348,12 +411,19 @@
       const it = items[i];
       if (!it) return;
       list.hidden = true; input.value = it.nome;
+      mostrar(it);
+    }
+
+    let seqLugar = 0;
+    function mostrar(it) {
+      const my = ++seqLugar;
       // município: mede a partir da sede (lista de cidades da região), não do centro do polígono
       const sede = it.tipo === "município" && data ? data.region.cities.find((c) => c.name === it.nome) : null;
       const ponto = sede ? { lon: sede.lon, lat: sede.lat } : it;
+      const dentro = it.dentro_da_area_coberta || !!sede;
       map.mark(ponto);
-      let html;
-      if (!it.dentro_da_area_coberta && !sede) {
+      let html = "";
+      if (!dentro) {
         html = `${levelBadge("none", "Fora da cena")}<div>Este lugar fica fora da área coberta pelas cenas NISAR desta demonstração (trecho entre Muçum e Lajeado). Não dá para dizer como a água ficou aí em ${MES_NOME}.</div>`;
       } else if (data) {
         const s = situacao(data, ponto.lon, ponto.lat);
@@ -363,8 +433,31 @@
           : `O radar não viu água fora do normal em ${MES_NOME}.`;
         html = `${levelBadge(s.nivel, s.label)}<div><b>${WW.esc(it.nome)}</b> · ${txt}</div>`;
       }
+      const casa = lerCasa();
+      const ehCasa = !!(casa && casa.nome === it.nome && casa.lat === it.lat && casa.lon === it.lon);
       place.hidden = false;
-      place.innerHTML = `${html}<small>Perto = até 1,5 km · pode ser afetada = até 3 km. Fonte do local: ${WW.esc(it.fonte)}</small>`;
+      place.innerHTML = `${ehCasa ? `<div class="kicker v-casa-k">${WW.icon.pin.replace("<svg", '<svg width="12" height="12"')} Minha casa</div>` : ""}${html}
+        ${dentro ? `<div class="v-hist" id="vHist">Contando as passagens do NISAR…</div>` : ""}
+        <div class="v-place-actions"><button type="button" class="sc-opt" id="vCasaBtn" aria-pressed="${ehCasa}">${ehCasa ? "Esquecer minha casa" : "Salvar como minha casa"}</button></div>
+        <small>Perto = até 1,5 km · pode ser afetada = até 3 km. A casa fica salva só neste navegador. Fonte do local: ${WW.esc(it.fonte)}</small>`;
+      WW.$("#vCasaBtn", place).addEventListener("click", () => {
+        gravarCasa(ehCasa ? null : { nome: it.nome, tipo: it.tipo, lat: it.lat, lon: it.lon, dentro_da_area_coberta: it.dentro_da_area_coberta, fonte: it.fonte });
+        mostrar(it);
+        const b = WW.$("#vCasaBtn", place);
+        if (b) b.focus();
+      });
+      if (!dentro) return;
+      historicoNisar().then((h) => {
+        const el = WW.$("#vHist", place);
+        if (my !== seqLugar || !el) return;
+        const c = contarPerto(h, ponto.lon, ponto.lat);
+        el.innerHTML = c.k
+          ? `Em <b>${c.k} das ${c.n}</b> passagens do NISAR (jun a out/2026), o radar viu água fora do normal a até 3 km ${sede ? "da sede" : "daqui"}: ${c.datas.map(dBR).join(", ")}.`
+          : `Em <b>nenhuma das ${c.n}</b> passagens do NISAR (jun a out/2026) o radar viu água fora do normal a até 3 km ${sede ? "da sede" : "daqui"}.`;
+      }).catch(() => {
+        const el = WW.$("#vHist", place);
+        if (el && my === seqLugar) el.remove();
+      });
     }
   };
 
@@ -428,6 +521,8 @@
 
           <section class="v-card v-span2" aria-labelledby="h-muni"><h2 class="v-h2" id="h-muni">Área alagada por município</h2><div id="vMuni">${loading()}</div></section>
 
+          <section class="v-card v-span2" aria-labelledby="h-rec"><div class="v-card-head"><h2 class="v-h2" id="h-rec">Histórico · recorrente ou pontual?</h2><span id="vRecSrc"></span></div><div id="vRec">${loading("Buscando o histórico do Sentinel-1…")}</div></section>
+
           <section class="v-card" aria-labelledby="h-veg"><h2 class="v-h2" id="h-veg">Vegetação alagada</h2><div id="vVeg">${loading()}</div></section>
 
           <section class="v-card" aria-labelledby="h-how"><h2 class="v-h2" id="h-how">Como o mapa foi feito</h2><div id="vHow">${loading()}</div></section>
@@ -443,6 +538,13 @@
     WW.EnsoBadge(WW.$("#vEnso", root));
     const map = ValeMap(WW.$("#vChangeMap", root));
     map.layer("radar", true);
+
+    // geometry=false: só os números (~10 KB em vez de ~890 KB com as manchas, que o cartão não desenha)
+    api("/api/regions/vale-do-taquari/recurrence?geometry=false").then((r) => {
+      WW.$("#vRecSrc", root).innerHTML = WW.sourceTag(r.source);
+      WW.$("#vRec", root).innerHTML = recorrenciaHTML(r);
+      desenharSerie(WW.$("#vRecChart", root), r.monthly);
+    }).catch((e) => { WW.$("#vRec", root).innerHTML = failed(e); });
     let data = null, sel = null, meta = null;
 
     WW.$$(".v-layers input", root).forEach((cb) => cb.addEventListener("change", () => map.layer(cb.dataset.layer, cb.checked)));

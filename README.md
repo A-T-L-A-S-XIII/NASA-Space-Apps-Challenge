@@ -13,15 +13,17 @@ The **"Cenário · e se chover assim?"** card is a simulation, labelled "Simulad
 
 ## The idea
 
-In recent floods in the Taquari Valley (RS, Brazil), many people were affected without water at their door: the road or bridge to their town was cut. We use **NISAR** radar images to show where water was observed over time, and let a resident save their home and see:
+In recent floods in the Taquari Valley (RS, Brazil), many people were affected without water at their door: the road or bridge to their town was cut. We use **NISAR** radar images to show where water was observed over time. In the app, a resident searches a town or neighbourhood, saves it as "Minha casa" (kept only in their browser) and sees:
 
-- whether radar saw water there in the latest image, and in how many of the past images;
-- how far the nearest water was;
-- whether access may be cut ("affected without being flooded").
+- how far the nearest new water seen by the radar was;
+- in how many of the 19 NISAR passes (June to October 2026) the radar saw new water within 3 km;
+- whether that area floods often: the **Sentinel-1** history since 2015 ("recorrente ou pontual?").
 
-It only shows what the radar observed. It is not a forecast.
+The rain scenario card adds a **simulated** warning (see above). Everything else only shows what the radar observed. It is not a flood forecast.
 
-**NISAR detects the water; OpenStreetMap roads and IBGE localities provide context.**
+**NISAR detects the water; Sentinel-1 adds the history since 2015; IBGE municipalities and OpenStreetMap give context.**
+
+Not in this version: whether access to a town may be cut ("affected without being flooded"). The road data is extracted (`data/roads/`) but the access check is not in the app yet (see "Current gaps").
 
 ## How it works
 
@@ -43,9 +45,13 @@ Browser ──► Next.js (frontend/, Vercel) ──► FastAPI (backend/, Rende
 
 ## NASA data used
 
-NISAR L2 GCOV, the only source of candidate water. A search of NASA's catalogue (`pipeline/query.py`, result in `data/nisar_granules.json`) found 21 images since June 2026 covering our area, on two orbits that repeat every 12 days. The granules used are listed in [docs/DATA.md](docs/DATA.md).
+NISAR L2 GCOV, the source of the water seen in 2026. A search of NASA's catalogue (`pipeline/query.py`, result in `data/nisar_granules.json`) found 21 images since June 2026 covering our area, on two orbits that repeat every 12 days. The granules used are listed in [docs/DATA.md](docs/DATA.md).
 
-## Other data (context only)
+## Other data
+
+- **Sentinel-1 (ESA Copernicus):** C-band VV history, 471 passes of relative orbit 24 from 2015 to 2026, processed with `backend/scripts/process_sentinel1.py` (Google Earth Engine). Used only for the "recorrente ou pontual?" history, never for the 2026 water.
+- **Weather forecast:** Open-Meteo, 7 days, read live. Weather only, not a flood forecast.
+- **ENSO:** NOAA CPC Oceanic Niño Index, context only, never shown as the cause of a flood.
 
 - **Basemap:** tiles © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), used under the OpenStreetMap tile usage policy (attribution always visible, no stored or offline tiles).
 - **Roads:** OpenStreetMap main roads (motorway to tertiary) inside the study area, extracted with `pipeline/fetch_roads.py` (OSM data timestamp in `data/roads/osm_roads.geojson`). Road data © OpenStreetMap contributors, available under the [Open Database License (ODbL)](https://www.openstreetmap.org/copyright). The road file is derived from OSM and is under the ODbL, not under the MIT licence of the code.
@@ -114,9 +120,17 @@ Before the pitch, see [docs/checklist-pitch.md](docs/checklist-pitch.md).
 
 See [docs/METHOD.md](docs/METHOD.md). In short: smooth water looks dark to radar, but shadows and other smooth surfaces do too; wind, cities and flooded vegetation can hide water; not seeing water does not prove there was no flood.
 
+### Current gaps
+
+- **Access ("affected without being flooded"):** the API routes `/api/access`, `/api/road-flags`, `/api/bulletins` and `/api/exposure` read `data/demo/`, which has not been generated from the NISAR passes yet, so they answer 503 and the app does not call them.
+- **Rain scenario:** its thresholds are for demonstration and were not calibrated against past floods.
+- **Flooded vegetation:** needs HV polarisation; the processed scenes are HH only.
+- **Accounts:** one demo account and guest access; sign-up is disabled because the free hosting does not keep the database between deploys.
+- The globe and the "Explorar dados" drill-down use simulated values, labelled "simulado" on screen.
+
 ## Future work
 
-Mobile app, news, other regions.
+Access to towns by road (OSM roads crossed with the NISAR water), a calibrated rain scenario, mobile app, news, other regions.
 
 ## Team
 
