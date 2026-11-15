@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.services.downloads import stats_csv, stats_geojson  # noqa: E402
+from app.services.exposure import flagged_road_ids  # noqa: E402
 from app.services.store import REPO, Dataset  # noqa: E402
 
 OUT = REPO / "frontend" / "public" / "api"
@@ -50,6 +51,9 @@ def main() -> int:
     shutil.copy(REPO / "data" / "aoi.geojson", OUT / "aoi.json")
     if ds.access is not None:
         dump(OUT / "access.json", ds.access)
+    dump(OUT / "bulletins.json", ds.bulletins)
+    dump(OUT / "road-flags.json",
+         {e["date_id"]: flagged_road_ids(ds, e["date_id"]) for e in ds.timeline["entries"]})
     for e in ds.timeline["entries"]:
         dump(OUT / "layers" / f"{e['date_id']}.json", ds.layer_set(e["date_id"]))
     for png in (root / "layers").glob("*.png"):

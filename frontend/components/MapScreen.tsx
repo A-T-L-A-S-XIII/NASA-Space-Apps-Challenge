@@ -1,5 +1,6 @@
 "use client";
 
+import type { FeatureCollection } from "geojson";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Legend from "./Legend";
@@ -18,7 +19,10 @@ const MapView = dynamic(() => import("./MapView"), {
 type Load =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; timeline: TL; layerSets: LayerSet[]; stats: Stats; localities: Locality[]; fixture: boolean };
+  | {
+      status: "ready"; timeline: TL; layerSets: LayerSet[]; stats: Stats; localities: Locality[]; fixture: boolean;
+      roads: FeatureCollection | null; roadFlags: Record<string, string[]>;
+    };
 
 export default function MapScreen() {
   const [load, setLoad] = useState<Load>({ status: "loading" });
@@ -35,8 +39,13 @@ export default function MapScreen() {
         const layerSets = await Promise.all(timeline.entries.map((e) => api.layers(e.date_id)));
         // Warm the browser cache so date changes are instant.
         layerSets.flatMap((ls) => ls.layers).forEach((l) => { new Image().src = api.fileUrl(l.url); });
+        // Roads are optional context: the map still works without them.
+        const [roads, roadFlags] = await Promise.all([
+          api.roads().catch(() => null),
+          api.roadFlags().catch(() => ({} as Record<string, string[]>)),
+        ]);
         setLoad({
-          status: "ready", timeline, layerSets, stats, localities: locs.items,
+          status: "ready", timeline, layerSets, stats, localities: locs.items, roads, roadFlags,
           fixture: timeline.fixture || stats.fixture || locs.fixture,
         });
         setIndex(timeline.entries.length - 1);
@@ -80,6 +89,8 @@ export default function MapScreen() {
           showChange={showChange}
           localities={load.localities}
           flyTo={flyTo}
+          roads={load.roads}
+          flaggedRoadIds={cur ? load.roadFlags[cur.date_id] ?? [] : []}
         />
         <Timeline entries={entries} index={safeIndex} onChange={setIndex} />
       </section>

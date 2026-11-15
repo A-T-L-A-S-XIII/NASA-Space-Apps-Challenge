@@ -2,7 +2,7 @@
 
 NASA Space Apps 2026 · Challenge "Dancing with the SARs" · Local Event: Goiânia
 
-> **Work in progress.** The map still runs on test data (marked "DEV FIXTURE"). No NISAR result is shown yet.
+> **Work in progress.** The map still runs on test data (marked "DEV FIXTURE"; test towns are synthetic). No NISAR result is shown yet.
 > Candidate water-change indicator — not a validated flood map. Not for evacuation or route decisions.
 
 ## The idea

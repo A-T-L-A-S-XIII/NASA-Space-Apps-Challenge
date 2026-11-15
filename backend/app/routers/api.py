@@ -5,9 +5,9 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 
-from ..schemas import Exposure, FeatureCollection, LayerSet, Localities, Stats, Timeline
+from ..schemas import Bulletin, Exposure, FeatureCollection, LayerSet, Localities, Stats, Timeline
 from ..services.downloads import stats_csv, stats_geojson
-from ..services.exposure import compute_exposure
+from ..services.exposure import compute_exposure, flagged_road_ids
 from ..services.store import REPO, Dataset, get_dataset
 
 router = APIRouter(prefix="/api", tags=["Radar processado"])
@@ -38,6 +38,18 @@ def grid(ds: Dataset = Depends(get_dataset)):
 @router.get("/access", response_model=FeatureCollection, summary="Estradas e pontes (GeoJSON)")
 def access(ds: Dataset = Depends(get_dataset)):
     return ds.access or {"type": "FeatureCollection", "features": []}
+
+
+@router.get("/road-flags", response_model=dict[str, list[str]],
+            summary="Trechos de estrada sobre água candidata, por data")
+def road_flags(ds: Dataset = Depends(get_dataset)):
+    """date_id -> ids of road segments crossing candidate water on that date."""
+    return {e["date_id"]: flagged_road_ids(ds, e["date_id"]) for e in ds.timeline["entries"]}
+
+
+@router.get("/bulletins", response_model=list[Bulletin], summary="Boletins oficiais cadastrados")
+def bulletins(ds: Dataset = Depends(get_dataset)):
+    return ds.bulletins
 
 
 @router.get("/layers/{date_id}", response_model=LayerSet, summary="Camadas de uma data")

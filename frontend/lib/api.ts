@@ -1,3 +1,4 @@
+import type { FeatureCollection } from "geojson";
 import type { LayerSet, Localities, Stats, Timeline } from "./types";
 
 // With NEXT_PUBLIC_API_BASE (e.g. http://localhost:8000/api) the app calls the
@@ -22,7 +23,9 @@ export const api = {
   layers: (dateId: string) => getJson<LayerSet>(endpoint(`layers/${encodeURIComponent(dateId)}`)),
   stats: () => getJson<Stats>(endpoint("stats")),
   localities: () => getJson<Localities>(endpoint("localities")),
-  aoi: () => getJson<GeoJSON.FeatureCollection>(endpoint("aoi")),
+  aoi: () => getJson<FeatureCollection>(endpoint("aoi")),
+  roads: () => getJson<FeatureCollection>(endpoint("access")),
+  roadFlags: () => getJson<Record<string, string[]>>(endpoint("road-flags")),
   fileUrl: (rel: string) => (SERVER ? `${SERVER}/files/${rel}` : `${STATIC}/files/${rel}`),
   downloadUrl: (kind: "geojson" | "csv" | "png", dateId?: string) => {
     if (SERVER) return `${SERVER}/download/${kind}${dateId ? `?date_id=${dateId}` : ""}`;

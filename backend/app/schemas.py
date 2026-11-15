@@ -77,6 +77,7 @@ class ObservedState(str, Enum):
 
 class AccessStatus(str, Enum):
     interruption_confirmed = "interruption_confirmed"
+    no_path_under_modeled_conditions = "no_path_under_modeled_conditions"
     section_requiring_verification = "section_requiring_verification"
     isolation_not_demonstrated = "isolation_not_demonstrated"
 
@@ -122,6 +123,9 @@ class Access(BaseModel):
     basis: Basis
     source: str | None = None
     time: datetime | None = None
+    exits: int = Field(0, description="Road segments crossing the circle around the point")
+    cut_exit_ids: list[str] = []
+    coverage_warning: str | None = None
 
 
 class Exposure(Contracted):
@@ -439,6 +443,16 @@ class RegionStatus(BaseModel):
 
 
 # ----------------------------------------------------------- radar (arquivos)
+class Bulletin(BaseModel):
+    """Boletim oficial digitado à mão (D-14). Nunca inventado."""
+    model_config = ConfigDict(extra="allow")
+
+    source: str
+    time: str
+    timezone: str
+    segment_id: str
+
+
 class FeatureCollection(BaseModel):
     model_config = ConfigDict(extra="allow")
 

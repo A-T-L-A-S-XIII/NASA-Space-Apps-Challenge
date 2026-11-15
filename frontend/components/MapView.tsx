@@ -2,6 +2,7 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { Map as MlMap } from "maplibre-gl";
+import type { FeatureCollection, Point } from "geojson";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { BBox, LayerSet, Locality } from "@/lib/types";
@@ -14,6 +15,8 @@ export interface MapViewProps {
   showChange: boolean;
   localities: Locality[];
   flyTo: { lat: number; lon: number; key: number } | null;
+  roads: FeatureCollection | null;
+  flaggedRoadIds: string[];
 }
 
 const corners = ([w, s, e, n]: BBox): [[number, number], [number, number], [number, number], [number, number]] => [
@@ -128,13 +131,32 @@ export default function MapView(p: MapViewProps) {
       const f = e.features?.[0];
       if (!f) return;
       m.getCanvas().style.cursor = "pointer";
-      popup.setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number]).setText(String(f.properties?.name)).addTo(m);
+      popup.setLngLat((f.geometry as Point).coordinates as [number, number]).setText(String(f.properties?.name)).addTo(m);
     });
     m.on("mouseleave", "localities", () => {
       m.getCanvas().style.cursor = "";
       popup.remove();
     });
   }, [ready, p.localities]);
+
+  // Roads (OpenStreetMap context) and, in red, segments crossing candidate water on the current date.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready || !p.roads || m.getSource("roads")) return;
+    m.addSource("roads", { type: "geojson", data: p.roads });
+    m.addLayer({ id: "roads", type: "line", source: "roads", paint: { "line-color": "#5b6b7a", "line-width": 1.5 } }, m.getLayer("aoi") ? "aoi" : undefined);
+    m.addLayer({
+      id: "roads-flagged", type: "line", source: "roads",
+      filter: ["in", ["get", "id"], ["literal", []]],
+      paint: { "line-color": "#c0262d", "line-width": 3.5 },
+    });
+  }, [ready, p.roads]);
+
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready || !m.getLayer("roads-flagged")) return;
+    m.setFilter("roads-flagged", ["in", ["get", "id"], ["literal", p.flaggedRoadIds]]);
+  }, [ready, p.roads, p.flaggedRoadIds]);
 
   useEffect(() => {
     if (p.flyTo && map.current) map.current.flyTo({ center: [p.flyTo.lon, p.flyTo.lat], zoom: 12.5 });
