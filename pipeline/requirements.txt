@@ -1,0 +1,4 @@
+# Tested on 2026-11-15 (Python 3.12.7).
+numpy==2.5.3
+pillow==12.3.0
+# Added and pinned once the real GCOV file is read (track A): h5py, rasterio.
