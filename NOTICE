@@ -1,7 +1,7 @@
 Water Waltz
 
-Portions of this codebase were developed with the assistance of AI coding tools. All code was reviewed, tested and integrated by the team.
-
-Basemap tiles: © OpenStreetMap contributors (https://www.openstreetmap.org/copyright).
+Basemap tiles and road data: © OpenStreetMap contributors (https://www.openstreetmap.org/copyright).
+Road data derived from OpenStreetMap is available under the Open Database License (ODbL),
+not under the MIT licence of the code.
 
 Third-party data sources and their citations are listed in docs/DATA.md.
