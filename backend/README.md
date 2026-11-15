@@ -42,4 +42,8 @@ No startup, a conta governo semente (`SEED_GOV_EMAIL` / `SEED_GOV_PASSWORD`) é 
 
 ## Convenções
 
-Veja `CLAUDE.md`. Resumo: código simples, erros da API em português e todo dado simulado com `"source": "demo"`.
+- Código e comentários simples; prefira clareza a abstrações.
+- Mensagens de erro da API em português (ex.: `"E-mail já cadastrado"`).
+- Todo dado simulado é sinalizado com `"source": "demo"` e nunca aparece como dado real do NISAR.
+- O cadastro público (`/api/auth/register`) sempre cria role `"cidadao"`; só um usuário `"governo"` cria outro usuário governo (`/api/auth/gov-users`).
+- Rode `pytest` antes de considerar uma tarefa concluída.

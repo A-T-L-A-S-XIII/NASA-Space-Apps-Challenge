@@ -1,0 +1,17 @@
+# Ferramentas locais de desenvolvimento (não fazem parte do projeto)
+.claude/
+CLAUDE.md
+**/CLAUDE.md
+AGENTS.md
+**/AGENTS.md
+.mcp.json
+.cursor/
+.cursorrules
+.windsurf/
+.aider*
+.codex/
+.gemini/
+.github/copilot-instructions.md
+Skills/
+skills-zip/
+instalar-skills.sh

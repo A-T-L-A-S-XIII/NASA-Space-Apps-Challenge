@@ -41,4 +41,3 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 ## Repositório
 
 - [ ] Abrir o pull request da branch `backend` para a `main`.
-- [ ] Decidir se a pasta `.claude/` (skills) entra no Git ou vai para o `.gitignore`.
