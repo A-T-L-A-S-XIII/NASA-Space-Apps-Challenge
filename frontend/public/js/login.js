@@ -5,7 +5,8 @@
    Movimento adaptável (WW.motion): com prefers-reduced-motion, Save-Data ou
    pouca memória, o cursor não move a cena e não há interpolação por quadro.
    Tudo o que anima usa só transform/opacity. Autenticação: POST /api/auth/login (ponte do Next,
-   que guarda o token num cookie httpOnly). O cartão de cadastro (#/cadastro) só valida os campos:
+   que guarda o token num cookie httpOnly). "Entrar como visitante" abre uma sessão só no navegador,
+   sem conta e sem senha (WW.api.visitante). O cartão de cadastro (#/cadastro) só valida os campos:
    o cadastro está desativado e nada é enviado.
    ========================================================================== */
 (function (WW) {
@@ -226,7 +227,8 @@
             <a href="#" onclick="return false">Esqueci a senha</a>
           </div>
           <button class="btn btn-ink" type="submit">Entrar ${WW.icon.chevron}</button>
-          <p class="login-note">Protótipo de demonstração. Use a conta da equipe.</p>
+          <button class="btn btn-outline-ink" type="button" id="guestBtn">Entrar como visitante</button>
+          <p class="login-note">Protótipo de demonstração. Use a conta da equipe ou entre como visitante.</p>
           <a class="btn btn-outline-ink" href="#/cadastro">Criar conta</a>
           ${foot}
         </form>`;
@@ -235,6 +237,10 @@
       const boxes = { email: WW.$("#err-email", root), password: WW.$("#err-senha", root) };
       bindReveal(form);
       for (const n of Object.keys(boxes)) form[n].addEventListener("input", () => setErr(form[n], boxes[n], ""));
+
+      // Visitante: sem conta e sem senha; não chama o servidor
+      const guest = WW.$("#guestBtn", root);
+      guest.addEventListener("click", () => onEnter(point(guest), WW.api.visitante()));
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
