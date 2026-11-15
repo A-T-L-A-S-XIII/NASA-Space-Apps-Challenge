@@ -29,5 +29,6 @@ USER app
 WORKDIR /srv/backend
 
 EXPOSE 8000
-# Render e Railway definem $PORT; localmente fica 8000
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips "*"
+# Render e Railway definem $PORT; localmente fica 8000.
+# sh -c expande o $PORT e o exec deixa o uvicorn como PID 1, recebendo o SIGTERM do deploy.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips '*'"]
