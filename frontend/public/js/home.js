@@ -21,6 +21,7 @@
       </div>
 
       <div class="sat" id="sat">
+        <div class="enso-slot" id="ensoSlot"></div>
         <button class="sat-btn" type="button" id="satBtn" aria-expanded="false" aria-controls="satPanel">
           ${WW.icon.satellite}<span>Satélite</span><span class="sat-tag">NISAR</span>
         </button>
@@ -52,6 +53,7 @@
       <aside class="news-rail" id="newsRail" aria-label="Notícias da sua região"></aside>`;
 
     WW.NewsRail(WW.$("#newsRail", root), { items: content.news, user });
+    WW.EnsoBadge(WW.$("#ensoSlot", root)); // El Niño / La Niña: sem dado, o espaço fica vazio
     WW.$("#regionBtn", root).addEventListener("click", () => onRegion());
 
     /* ---------------- Globo (1/4 de calota) ---------------- */

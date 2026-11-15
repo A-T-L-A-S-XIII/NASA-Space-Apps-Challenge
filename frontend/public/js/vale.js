@@ -49,7 +49,11 @@
         api(`/api/nisar/passagens?mes=${MES}`),
         api("/api/nisar/municipios/geojson").then((g) => rewind(clone(g))),
         api(`/api/nisar/geojson?mes=${MES}`).then((g) => rewind(clone(g))),
-      ]).then(([region, resumo, passagens, muni, change]) => ({ region, resumo, passagens: passagens.itens, muni, change }));
+      ]).then(([region, resumo, passagens, muni, change]) => ({
+        region, resumo, passagens: passagens.itens, muni, change,
+        // fonte das passagens; se algo veio do plano B, a tela inteira é "Dado salvo (offline)"
+        origem: [passagens.origem, change.origem].includes("local") ? "local" : passagens.origem,
+      }));
       base.catch(() => { base = null; });
     }
     return base;
@@ -191,7 +195,7 @@
             <div class="kicker">${WW.icon.pin.replace("<svg", '<svg width="14" height="14"')} ${LOCAL}</div>
             <h1>Como está a <em>água</em> no vale</h1>
           </div>
-          <div class="v-head-chips"><span class="chip">${MES_NOME}</span><span class="chip chip-water"><span class="dot live"></span>Radar NISAR · banda L</span><a class="btn btn-primary v-head-cta" href="#/vale/dados">Dados detalhados ${WW.icon.chevron}</a></div>
+          <div class="v-head-chips"><span class="enso-slot" id="vEnso"></span><span class="chip">${MES_NOME}</span><span class="chip chip-water"><span class="dot live"></span>Radar NISAR · banda L</span><a class="btn btn-primary v-head-cta" href="#/vale/dados">Dados detalhados ${WW.icon.chevron}</a></div>
         </header>
         <div class="v-home-grid">
           <section class="v-card v-map-card" aria-label="Mapa do vale">
@@ -221,6 +225,7 @@
         </section>` : ""}
       </div>`;
 
+    WW.EnsoBadge(WW.$("#vEnso", root));
     const map = ValeMap(WW.$("#vMap", root), { compact: true });
     let data = null;
 
@@ -254,7 +259,7 @@
     });
 
     api("/api/previsao").then((f) => {
-      WW.$("#vForecast", root).innerHTML = `<h2 class="v-h2">Previsão · próximos 7 dias</h2>${forecastHTML(f)}`;
+      WW.$("#vForecast", root).innerHTML = `<div class="v-card-head"><h2 class="v-h2">Previsão · próximos 7 dias</h2>${WW.sourceTag(f.origem, { previsao: true })}</div>${forecastHTML(f)}`;
       const tp = WW.$("#vTechPrev", root);
       if (tp) tp.innerHTML = `<h3 class="v-h3">Previsão · série diária</h3>
         <table class="v-table v-table-tech"><thead><tr><th scope="col">Dia</th><th scope="col" class="num">Chuva mm</th><th scope="col" class="num">Prob. %</th><th scope="col" class="num">Mín. °C</th><th scope="col" class="num">Máx. °C</th></tr></thead>
@@ -331,7 +336,7 @@
             <a class="v-back" href="#/vale">${WW.icon.back} Início do vale</a>
             <h1>Dados <em>detalhados</em></h1>
           </div>
-          <div class="v-head-chips"><span class="chip">${WW.icon.pin.replace("<svg", '<svg width="13" height="13"')} ${LOCAL}</span><span class="chip">${MES_NOME}</span></div>
+          <div class="v-head-chips"><span class="enso-slot" id="vEnso"></span><span class="chip">${WW.icon.pin.replace("<svg", '<svg width="13" height="13"')} ${LOCAL}</span><span class="chip">${MES_NOME}</span></div>
         </header>
         <nav class="v-dates" id="vDates" aria-label="Passagens do radar em julho"></nav>
         <div class="v-data-grid">
@@ -352,7 +357,7 @@
             <p class="v-foot-note" id="vExpMsg" aria-live="polite"></p>
           </section>` : ""}
           <section class="v-card v-span2" aria-labelledby="h-change">
-            <div class="v-card-head"><h2 class="v-h2" id="h-change">Mapa de mudança</h2>
+            <div class="v-card-head"><h2 class="v-h2" id="h-change">Mapa de mudança</h2><span class="v-src" data-src></span>
               <div class="v-layers" role="group" aria-label="Camadas do mapa"><span>${WW.icon.layers} Camadas</span>
                 <label class="v-layer"><input type="checkbox" data-layer="radar" checked> Radar</label>
                 <label class="v-layer"><input type="checkbox" data-layer="cheia" checked> Cheia</label>
@@ -367,12 +372,12 @@
           </section>
 
           <section class="v-card v-span2" aria-labelledby="h-cmp">
-            <div class="v-card-head"><h2 class="v-h2" id="h-cmp">Comparar antes e depois</h2></div>
+            <div class="v-card-head"><h2 class="v-h2" id="h-cmp">Comparar antes e depois</h2><span class="v-src" data-src></span></div>
             <div id="vCompare">${loading()}</div>
           </section>
 
           <section class="v-card v-span2" aria-labelledby="h-tl">
-            <div class="v-card-head"><h2 class="v-h2" id="h-tl">Linha do tempo · passagens do NISAR</h2></div>
+            <div class="v-card-head"><h2 class="v-h2" id="h-tl">Linha do tempo · passagens do NISAR</h2><span class="v-src" data-src></span></div>
             <div id="vTimeline">${loading()}</div>
           </section>
 
@@ -394,6 +399,7 @@
         </div>
       </div>`;
 
+    WW.EnsoBadge(WW.$("#vEnso", root));
     const map = ValeMap(WW.$("#vChangeMap", root));
     map.layer("radar", true);
     let data = null, sel = null, meta = null;
@@ -650,6 +656,7 @@
     loadBase().then((d) => {
       data = d;
       map.set(d);
+      WW.$$("[data-src]", root).forEach((el) => { el.innerHTML = WW.sourceTag(d.origem); });
       const r = d.resumo;
       WW.$("#vDates", root).innerHTML = d.passagens.map((p) => `<button type="button" data-n="${p.n}" aria-pressed="false">
         <b>${dBR(p.data)}</b><span>órbita ${orbitaNome(p.trilha)}${p.cheia_km2 ? " · cheia" : ""}</span></button>`).join("");

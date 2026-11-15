@@ -80,6 +80,77 @@ window.WW = window.WW || {};
     return `<a class="brand brand--${variant}" href="${href}" aria-label="Water Waltz — início">${imgs}</a>`;
   };
 
+  /* ------------------------------------------------------- etiqueta da fonte */
+  /* Diz de onde vem o dado de cada card. origem: "nisar", "demo", "open-meteo" ou "local" (plano B). */
+  WW.sourceLabel = function (origem, { previsao = false } = {}) {
+    if (origem === "nisar") return { kind: "real", text: "Dado NISAR real" };
+    if (origem === "demo") return previsao ? { kind: "demo", text: "Previsão simulada" } : { kind: "demo", text: "Dado ilustrativo" };
+    if (origem === "open-meteo") return { kind: "open", text: "Previsão Open-Meteo" };
+    if (origem === "local") return { kind: "offline", text: "Dado salvo (offline)" };
+    return null;
+  };
+  WW.sourceTag = function (origem, opts) {
+    const l = WW.sourceLabel(origem, opts);
+    return l ? `<span class="src-tag src-${l.kind}"><span class="sr-only">Fonte: </span>${WW.esc(l.text)}</span>` : "";
+  };
+
+  /* ------------------------------------------------------------ selo ENSO */
+  /* Fase do El Niño / La Niña e o ONI (anomalia da temperatura do Pacífico, °C). Sem dado, não mostra nada. */
+  const FASES = { "El Niño": "el-nino", "La Niña": "la-nina", "Neutro": "neutro" };
+  WW.fmtOni = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + WW.fmt(Math.abs(v), 1);
+  let ensoSeq = 0;
+  WW.ensoBadgeHTML = function (e, id = "ensoPanel") {
+    if (!e || !FASES[e.fase] || typeof e.oni !== "number") return "";
+    return `<div class="enso" data-fase="${FASES[e.fase]}">
+      <button class="enso-btn" type="button" aria-expanded="false" aria-controls="${id}">
+        <span class="enso-dot" aria-hidden="true"></span><span class="sr-only">Pacífico agora: </span>${WW.esc(e.fase)}
+        <span class="enso-oni">ONI ${WW.fmtOni(e.oni)}</span>
+      </button>
+      <div class="enso-panel" id="${id}" role="group" aria-label="Sobre o El Niño e a La Niña" hidden></div>
+    </div>`;
+  };
+  // Monta o selo em `el` quando o dado chega; enquanto isso (ou sem dado) el fica vazio
+  WW.EnsoBadge = function (el) {
+    return WW.api.enso().then((e) => {
+      const html = WW.ensoBadgeHTML(e, "ensoPanel" + ++ensoSeq);
+      if (!html || !el.isConnected) return null;
+      el.innerHTML = html;
+      const box = el.firstElementChild, btn = box.querySelector(".enso-btn"), panel = box.querySelector(".enso-panel");
+      const topico = e.fase === "La Niña" ? "la-nina" : "el-nino";
+      let loaded = false;
+      const nota = `ONI ${WW.fmtOni(e.oni)} °C na estação ${WW.esc(e.estacao)} · NOAA CPC${e.live ? "" : ` · dado salvo${e.data_snapshot ? " em " + WW.esc(e.data_snapshot) : ""}`}`;
+      async function load() {
+        loaded = true;
+        panel.innerHTML = `<p class="enso-note">Carregando…</p>`;
+        try {
+          const x = await WW.api.explicacao(topico);
+          panel.innerHTML = `<b class="enso-title">${WW.esc(x.titulo)}</b><p class="enso-text">${WW.esc(x.resumo)}</p>
+            ${e.fase === "Neutro" ? `<p class="enso-text">Agora o Pacífico está neutro: nem El Niño, nem La Niña.</p>` : ""}
+            <p class="enso-note">${nota}</p>`;
+        } catch (err) {
+          loaded = false;
+          panel.innerHTML = `<p class="enso-note">Não foi possível carregar a explicação agora.<br>${nota}</p>`;
+        }
+      }
+      const toggle = (open) => {
+        panel.hidden = !open; btn.setAttribute("aria-expanded", open);
+        if (open && !loaded) load();
+      };
+      btn.addEventListener("click", () => toggle(panel.hidden));
+      box.addEventListener("keydown", (ev) => {
+        if (ev.key !== "Escape" || panel.hidden) return;
+        ev.stopPropagation(); // o selo fica dentro de outros painéis (ex.: a pílula Satélite)
+        toggle(false); btn.focus();
+      });
+      const fora = (ev) => {
+        if (!box.isConnected) return document.removeEventListener("click", fora);
+        if (!panel.hidden && !box.contains(ev.target)) toggle(false);
+      };
+      document.addEventListener("click", fora);
+      return { close: () => toggle(false) };
+    });
+  };
+
   /* ----------------------------------------------------------------- toast */
   WW.toast = function (html, ms = 5200) {
     let box = document.getElementById("toast");
@@ -181,19 +252,20 @@ window.WW = window.WW || {};
       <div class="ni-meta">${WW.esc(n.source)}</div>
     </article>`;
 
-  /* Subaba de notícias: recebe o feed inteiro e mostra SOMENTE a região do usuário. */
+  /* Subaba de notícias: recebe o feed inteiro e mostra SOMENTE a região do usuário.
+     É uma visão futura: conteúdo estático de exemplo, sem nenhuma chamada de rede. */
   WW.NewsRail = function (el, { items, user }) {
     const loc = user.location;
     const mine = items.filter((n) => n.region === loc.region);
     el.innerHTML = `
       <div class="rail-head">
-        <h2>Notícias locais</h2>
+        <div class="rail-title"><h2>Notícias locais</h2><span class="chip chip-accent rail-future">Visão futura</span></div>
         <div class="rail-loc">${WW.icon.pin}<span>${WW.esc(loc.regionName)}<br><span style="color:var(--text-faint)">${WW.esc(loc.municipalityName)} · ${WW.esc(loc.stateUF)}</span></span></div>
       </div>
       <div class="rail-list scroll" role="feed" aria-label="Notícias de ${WW.esc(loc.regionName)}">
         ${mine.length ? mine.map((n, i) => WW.newsItem(n, { thumb: i < 2 })).join("") : `<p class="rail-empty">Sem notícias da sua região agora.</p>`}
       </div>
-      <div class="rail-foot">Só notícias da sua região. <span class="badge-demo">exemplo</span></div>`;
+      <div class="rail-foot">Visão futura: notícias de exemplo, escritas para o protótipo. Ainda não há fonte ao vivo. <span class="badge-demo">exemplo</span></div>`;
     return { count: mine.length };
   };
 

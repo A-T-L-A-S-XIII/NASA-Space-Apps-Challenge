@@ -23,10 +23,27 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 - [x] O "recorrente ou pontual?" do histórico já sai em `/recurrence`.
 - [ ] Juntar o detalhe do NISAR (as 19 passagens) na mesma resposta, se der tempo. Todo dado simulado deve levar `"source": "demo"`.
 
+## Escopo: conta governo e alertas (aguardando decisão da equipe)
+
+O app tem uma conta só, a de demonstração (`DEMO_USER_*`), e não mostra alertas. O backend ainda tem o que
+sobrou da versão com governo. O frontend não usa nada disso; nada foi removido até a equipe decidir.
+
+- [ ] Decidir se remove ou mantém:
+  - a conta governo semente (`ensure_seed_gov`, `SEED_GOV_*` no `.env` e no `config.py`);
+  - `require_gov` e a rota `POST /api/auth/gov-users`;
+  - os alertas: `GET /api/alerts`, criar e desativar alerta, `GET /api/gov/export/{region_id}.csv`,
+    `GET /api/me/city-status` e os alertas de exemplo (`ensure_demo_alerts`);
+  - o cadastro público `POST /api/auth/register` (a tela de cadastro não o chama).
+- [ ] Se remover: apagar também os testes (`test_alerts.py`, os de governo em `test_auth.py`), as variáveis
+  `SEED_GOV_*` do `conftest.py` e do `.env.example`, e as menções no guia do projeto (raiz) e em `docs/`.
+
 ## Segurança (antes de publicar a API)
 
 - [x] Trocar `JWT_SECRET` e `SEED_GOV_PASSWORD` no `.env` local.
 - [ ] Cadastrar `JWT_SECRET`, `SEED_GOV_EMAIL`, `SEED_GOV_PASSWORD` e `CORS_ORIGINS` no Railway ao publicar.
+- [ ] Cadastrar a conta de demonstração no Railway (`DEMO_USER_NAME`, `DEMO_USER_EMAIL`, `DEMO_USER_PASSWORD`,
+  `DEMO_USER_CITY`), com senha forte. No Next (Vercel): `API_URL`, `DEMO_EMAIL` (igual a `DEMO_USER_EMAIL`) e
+  `JWT_EXPIRE_MINUTES` (igual ao do backend).
 - [ ] Banco persistente no deploy: hoje o SQLite do container some a cada deploy (contas e alertas).
 - [ ] Rodar uma revisão de segurança (login, tokens, CORS).
 
@@ -39,5 +56,7 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 ## Repositório
 
 - [x] Backend integrado ao projeto (branch `teste-agente`, PR #1, já mergeado).
+- [ ] Branch `integracao-mockup` (login pela ponte do Next, conta demo, cadastro desativado): abrir PR e
+  mergear quando a equipe aprovar. Ainda não tem PR nem push.
 - [ ] Revisar e mergear o PR #10 (branch `backend` → `main`) e os PRs #11 a #15.
 - [ ] Depois dos merges, apagar as branches `nisar-import` (dividida nos PRs #11 a #15) e `teste-agente`.

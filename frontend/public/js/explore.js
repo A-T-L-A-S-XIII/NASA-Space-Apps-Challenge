@@ -52,7 +52,9 @@
 
   WW.Explore = function (root, { content, onNavigate, onRequestRegion }) {
     const user = content.user, loc = user.location;
-    const vale = new Set(content.valeDoTaquari);
+    // Só o Vale do Taquari (o piloto) abre dados; o resto mostra "Em breve"
+    const vale = new Set([...content.valeDoTaquari, ...(content.valeMunicipios || []).map((m) => m.id)]);
+    const EM_BREVE = "Em breve: piloto no Vale do Taquari";
     const world = window.GEO_WORLD.features;
     const sa = window.GEO_SOUTH_AMERICA;
     const states = window.GEO_BR_STATES.features;
@@ -156,7 +158,7 @@
       if (hit.layer === "world") return p.continent === loc.continent;
       if (hit.layer === "sa") return p.id === loc.country;
       if (hit.layer === "states") return p.id === loc.state;
-      return hit.layer === "muns";
+      return hit.layer === "muns" && vale.has(p.id);
     }
     function tipHTML(hit) {
       const p = hit.feature.properties, ok = canEnter(hit);
@@ -165,7 +167,7 @@
       if (hit.layer === "states") extra = `<br><span class="muted">Chuva 7 d: ${WW.fmt(stateP7(hit.feature), 1)} mm (simulado)</span>`;
       if (hit.layer === "muns") extra = `<br><span class="muted">Chuva 7 d: ${WW.fmt(md(hit.feature).p7, 1)} mm (simulado)</span>`;
       const next = ["Continente", "País", "Estado", "Município", "Município"][S.level];
-      return `<strong>${WW.esc(name)}</strong>${extra}<br>${ok ? `<span class="go">Clique para abrir · ${next} →</span>` : `<span class="muted">Fora da sua região</span>`}`;
+      return `<strong>${WW.esc(name)}</strong>${extra}<br>${ok ? `<span class="go">Clique para abrir · ${next} →</span>` : `<span class="muted">${EM_BREVE}</span>`}`;
     }
 
     function enter(hit) {
@@ -289,22 +291,27 @@
         sub = "Comece pelo continente onde você está. Os dados abrem em escala: continente, país, estado e município.";
         const conts = ["América do Sul", "América do Norte", "Europa", "África", "Ásia", "Oceania"];
         body = `<div class="section-title"><h3>Continentes</h3></div><div class="child-list">${conts.map((c) => childButton({
-          name: c, sub: c === loc.continent ? "Sua região" : "Fora da sua região", path: "@region", mine: c === loc.continent, enabled: c === loc.continent, tag: c === loc.continent ? "Acessar" : "" })).join("")}</div>`;
+          name: c, sub: c === loc.continent ? "Sua região" : EM_BREVE, path: "@region", mine: c === loc.continent, enabled: c === loc.continent, tag: c === loc.continent ? "Acessar" : "" })).join("")}</div>`;
       } else if (S.level === 1) {
         title = loc.continent; sub = `${sa.features.length} países e territórios · dados meteorológicos e topográficos do continente.`;
         const list = sa.features.slice().sort((a, b) => (a.properties.id === loc.country ? -1 : b.properties.id === loc.country ? 1 : a.properties.name.localeCompare(b.properties.name)));
         body = metricsHTML(FIXED.SA, { sar: true }) + `<div class="section-title"><h3>Países</h3><span class="kicker">próximo nível</span></div><div class="child-list">${list.map((f) => childButton({
-          name: f.properties.name, sub: f.properties.id === loc.country ? "Seu país" : "Fora da sua região", path: `SA/${f.properties.id}`, mine: f.properties.id === loc.country, enabled: f.properties.id === loc.country })).join("")}</div>`;
+          name: f.properties.name, sub: f.properties.id === loc.country ? "Seu país" : EM_BREVE, path: `SA/${f.properties.id}`, mine: f.properties.id === loc.country, enabled: f.properties.id === loc.country })).join("")}</div>`;
       } else if (S.level === 2) {
         title = loc.countryName; sub = "27 unidades da federação · cor = chuva acumulada em 7 dias.";
         const list = states.slice().sort((a, b) => (a.properties.id === loc.state ? -1 : b.properties.id === loc.state ? 1 : a.properties.name.localeCompare(b.properties.name)));
         body = metricsHTML(FIXED.BRA) + `<div class="section-title"><h3>Estados</h3><span class="kicker">próximo nível</span></div><div class="child-list">${list.map((f) => childButton({
-          name: f.properties.name, sub: f.properties.id === loc.state ? "Seu estado" : `${f.properties.uf} · fora da sua região`, path: `SA/${loc.country}/${f.properties.id}`, mine: f.properties.id === loc.state, enabled: f.properties.id === loc.state })).join("")}</div>`;
+          name: f.properties.name, sub: f.properties.id === loc.state ? "Seu estado" : `${f.properties.uf} · ${EM_BREVE}`, path: `SA/${loc.country}/${f.properties.id}`, mine: f.properties.id === loc.state, enabled: f.properties.id === loc.state })).join("")}</div>`;
       } else if (S.level === 3) {
         title = loc.stateName; sub = `${muns.length} municípios · contorno claro = ${loc.regionName}.`;
         body = metricsHTML(FIXED[43]) + `<div class="section-title"><h3>Municípios</h3><span class="kicker">próximo nível</span></div>
           <input class="search" id="munSearch" type="search" placeholder="Buscar município…" aria-label="Buscar município">
           <div class="child-list" id="munList"></div>`;
+      } else if (!vale.has(S.sel.mun)) {
+        // Fora do piloto: nada de números, nem simulados
+        title = byId(muns, S.sel.mun).properties.name; sub = loc.stateName;
+        body = `<div class="soon"><b>${EM_BREVE}</b><p>Por enquanto, o Water Waltz mostra os dados do radar NISAR só no Vale do Taquari. Outras regiões entram depois do piloto.</p>
+          <a class="btn btn-primary" href="#/vale">Abrir o Vale do Taquari ${WW.icon.chevron}</a></div>`;
       } else {
         const f = byId(muns, S.sel.mun), d = md(f), name = f.properties.name, inVale = vale.has(f.properties.id);
         title = name; sub = `${inVale ? loc.regionName + " · " : ""}${loc.stateName}${f.properties.id === loc.municipality ? " · onde você está" : ""}`;
@@ -337,8 +344,8 @@
             : content.valeDoTaquari.map((id) => byId(muns, id)).filter(Boolean);
           listEl.innerHTML = pool.map((f) => childButton({
             name: f.properties.name, sub: f.properties.id === loc.municipality ? "Você está aqui" : vale.has(f.properties.id) ? loc.regionName : "",
-            path: `SA/${loc.country}/${loc.state}/${f.properties.id}`, mine: f.properties.id === loc.municipality, enabled: true,
-            tag: `${WW.fmt(md(f).p7, 0)} mm` })).join("") || `<p class="rail-empty">Nenhum município encontrado.</p>`;
+            path: `SA/${loc.country}/${loc.state}/${f.properties.id}`, mine: f.properties.id === loc.municipality, enabled: vale.has(f.properties.id),
+            tag: vale.has(f.properties.id) ? `${WW.fmt(md(f).p7, 0)} mm` : "Em breve" })).join("") || `<p class="rail-empty">Nenhum município encontrado.</p>`;
         };
         q.addEventListener("input", draw); draw();
       }

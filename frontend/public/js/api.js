@@ -278,6 +278,36 @@
     };
   }
 
+  /* ENSO (El Niño / La Niña): sem plano B. Sem dado, devolve null e o selo não aparece.
+     Com a NOAA fora, o backend usa o snapshot salvo (live: false): o dado continua real. */
+  let ensoP = null;
+  function enso() {
+    if (!ensoP) {
+      ensoP = request("/api/climate/enso").then((d) => {
+        const u = d && d.latest;
+        if (!u || typeof u.oni !== "number" || !u.phase) return null;
+        return { fase: u.phase, oni: u.oni, estacao: `${u.season} ${u.year}`, mes: u.month,
+          live: !!d.live, data_snapshot: d.snapshot_date || null, origem: origem(d, false) };
+      }, (e) => {
+        console.warn(`[WW.api] ENSO indisponível: ${e.message} O selo fica escondido.`);
+        return null;
+      });
+      ensoP.then((v) => { if (!v) ensoP = null; }); // tenta de novo na próxima tela
+    }
+    return ensoP;
+  }
+
+  /* Texto curto de /api/explain/{topico} (ex.: el-nino, la-nina) */
+  const explicacoes = new Map();
+  function explicacao(topico) {
+    if (!explicacoes.has(topico)) {
+      const p = request(`/api/explain/${encodeURIComponent(topico)}`).then((d) => ({ titulo: d.title, resumo: d.summary }));
+      explicacoes.set(topico, p);
+      p.catch(() => explicacoes.delete(topico));
+    }
+    return explicacoes.get(topico);
+  }
+
   // Caminho que a tela pede -> função que busca na rota do main e converte
   const ROTAS = [
     [/^\/api\/regions\/vale-do-taquari$/, () => regiao()],
@@ -379,6 +409,8 @@
     url,
     ApiError,
     get,
+    enso,
+    explicacao,
     login,
     me,
     logout,

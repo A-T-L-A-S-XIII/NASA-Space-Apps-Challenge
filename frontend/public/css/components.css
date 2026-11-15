@@ -267,6 +267,43 @@ a { color: inherit; }
 /* --- Marca-texto de alagamento/seca sobre imagens de radar (radar-highlight.js) --- */
 .radar-hl { pointer-events: none; background: transparent !important; mix-blend-mode: multiply; }
 
+/* --- Etiqueta da fonte do dado ------------------------------------------------ */
+.src-tag {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--r-pill);
+  font-size: 11.5px; font-weight: 600; letter-spacing: .02em; line-height: 1.4; white-space: nowrap;
+  border: 1px solid transparent; animation: fadeIn var(--t-med) var(--ease-out) both;
+}
+.src-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.src-real { background: var(--water-soft); color: var(--water); }
+.src-demo { background: var(--accent-soft); color: var(--accent); }
+.src-open { background: var(--surface-2); color: var(--text-muted); border-color: var(--line); }
+.src-offline { background: transparent; color: var(--text-muted); border: 1px dashed var(--line-strong); }
+
+/* --- Selo ENSO (El Niño / La Niña) --------------------------------------------- */
+.enso-slot:empty { display: none; }
+.enso { position: relative; display: inline-flex; }
+.enso[data-fase="la-nina"] { --_c: var(--water); }
+.enso[data-fase="el-nino"] { --_c: var(--accent); }
+.enso[data-fase="neutro"]  { --_c: var(--text-muted); }
+.enso-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  border-radius: var(--r-pill); border: 1px solid var(--line); cursor: pointer;
+  background: var(--surface-glass); color: var(--text); font: inherit; font-weight: 700; font-size: var(--fs-sm);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transition: border-color var(--t-fast); animation: fadeIn var(--t-med) var(--ease-out) both;
+}
+.enso-btn:hover, .enso-btn[aria-expanded="true"] { border-color: var(--line-strong); }
+.enso-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--_c); }
+.enso-oni { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--_c); }
+.enso-panel {
+  position: absolute; z-index: 7; right: 0; top: calc(100% + 8px); width: min(320px, calc(100vw - 32px)); padding: var(--s4);
+  border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line-strong); color: var(--text);
+  box-shadow: var(--shadow-2); animation: fadeIn var(--t-med) var(--ease-out) both; /* fundo opaco: texto AA sobre qualquer tela */
+}
+.enso-title { display: block; font-size: 15px; margin-bottom: var(--s2); }
+.enso-text { margin: 0 0 var(--s2); font-size: 13px; color: var(--text-muted); }
+.enso-note { margin: 0; font-size: 11.5px; color: var(--text-muted); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
