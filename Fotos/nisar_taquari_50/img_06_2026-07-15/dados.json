@@ -1,0 +1,23 @@
+{
+  "n": 6,
+  "data": "2026-07-15",
+  "trilha": "103_A_163",
+  "pol": "HH",
+  "passagens_na_orbita": 9,
+  "agua_km2": 8.5,
+  "cheia_km2": 0.0,
+  "seca_km2": 0.0,
+  "na_janela_da_enchente": true,
+  "limites_leaflet": [
+    [
+      -29.55,
+      -52.15
+    ],
+    [
+      -29.15,
+      -51.8
+    ]
+  ],
+  "fonte": "NASA/ISRO NISAR via ASF DAAC",
+  "granulo": "NISAR_L2_PR_GCOV_025_103_A_163_4005_DHDH_A_20260715T092226_20260715T092301_P05023_N_F_J_001"
+}

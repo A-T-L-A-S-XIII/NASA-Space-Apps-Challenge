@@ -1,0 +1,6 @@
+# Só para scripts/process_nisar.py (não entram na imagem da API).
+# Versions tested on 2026-11-15.
+asf_search==14.1.0
+earthaccess==0.19.0
+h5py==3.16.0
+rasterio==1.5.2
