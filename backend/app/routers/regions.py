@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.data.regions import REGIONS, bbox_to_wkt
-from app.services import asf
+from app.providers import get_provider
+from app.services import asf, water
 
 router = APIRouter(prefix="/api/regions", tags=["regions"])
 
@@ -43,3 +44,41 @@ async def region_scenes(
         "scenes": result["scenes"],
         "error": result["error"],
     }
+
+
+def _month(value: str, field: str) -> str:
+    try:
+        return water.parse_month(value, field)
+    except water.InvalidMonth as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+
+
+@router.get("/{region_id}/timeline")
+async def region_timeline(
+    region_id: str,
+    start: str = Query("2022-01", description="Mês inicial (AAAA-MM)"),
+    end: str | None = Query(None, description="Mês final (AAAA-MM). Padrão: mês atual"),
+):
+    region = _get_region(region_id)
+    start = _month(start, "start")
+    end = _month(end, "end") if end else water.current_month()
+    if end < start:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="'end' deve ser depois de 'start'")
+    return await water.timeline(get_provider(region_id), region, start, end)
+
+
+@router.get("/{region_id}/water-mask")
+def region_water_mask(region_id: str, date: str = Query(..., description="Mês (AAAA-MM)")):
+    region = _get_region(region_id)
+    return water.water_mask_geojson(get_provider(region_id), region, _month(date, "date"))
+
+
+@router.get("/{region_id}/compare")
+def region_compare(
+    region_id: str,
+    before: str = Query(..., description="Mês de antes (AAAA-MM)"),
+    after: str = Query(..., description="Mês de depois (AAAA-MM)"),
+):
+    region = _get_region(region_id)
+    before, after = _month(before, "before"), _month(after, "after")
+    return water.compare(get_provider(region_id), region, before, after)

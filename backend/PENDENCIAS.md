@@ -16,6 +16,7 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 
 ### Servir o NISAR já processado (`Fotos/nisar_taquari_50/`)
 
+- [ ] Criar um `NisarProvider` (em `app/providers/`, ligado em `get_provider()`) para que `/timeline`, `/water-mask` e `/compare` usem dado real nos meses com cena processada.
 - [ ] Criar rotas que sirvam as 19 passagens já processadas: `catalogo.json`, o GeoJSON de cheia e seca de cada data e as imagens.
 - **Cuidado 1:** a área de água depende da trilha (órbita). A `053_D` mede de 1 a 5 km² e a `103_A` mede de 7 a 9 km², no mesmo rio. Só compare datas da **mesma trilha**.
 - **Cuidado 2:** a área processada vai de −29,15 a −29,55 de latitude, mais ou menos de Muçum a Lajeado. Estrela, Bom Retiro do Sul e Taquari ficam de fora.

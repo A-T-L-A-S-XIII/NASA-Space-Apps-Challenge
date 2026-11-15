@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     asf_timeout_seconds: float = 30
     asf_cache_ttl_seconds: int = 30 * 60
 
+    # Índice ONI (El Niño / La Niña) da NOAA
+    noaa_oni_url: str = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt"
+    enso_timeout_seconds: float = 15
+    enso_cache_ttl_seconds: int = 6 * 60 * 60
+    enso_retry_seconds: int = 5 * 60  # depois de uma falha, espera isso antes de tentar a NOAA de novo
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_origins(cls, value):

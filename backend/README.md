@@ -34,9 +34,22 @@ pytest
 | GET | `/api/regions` | Regiões monitoradas (piloto: `vale-do-taquari`) |
 | GET | `/api/regions/{id}` | Detalhe da região: bbox, centro, cidades e traçado do rio |
 | GET | `/api/regions/{id}/scenes` | Cenas NISAR ao vivo do ASF (`start`, `end`, `product=GCOV`, `limit=25`) |
+| GET | `/api/regions/{id}/timeline` | Série mensal: área de água, anomalia, status, ONI e fase ENSO (`start=2022-01`, `end=<mês atual>`) |
+| GET | `/api/regions/{id}/water-mask` | GeoJSON da mancha d'água no mês (`date=AAAA-MM`), com área e cidades atingidas |
+| GET | `/api/regions/{id}/compare` | Antes/depois (`before`, `after`): áreas, delta, cidades atingidas e frase explicativa |
+| GET | `/api/climate/enso` | ONI real da NOAA com a fase (El Niño, La Niña, Neutro); `start=AAAA-MM` opcional |
 
 As cenas vêm do catálogo público do ASF DAAC (sem login), com cache de 30 min.
 Se o ASF estiver fora do ar, a rota responde `live: false`, lista vazia e `error`.
+
+Linha do tempo, mancha e comparação vêm de um *provider* (`app/providers/`). Hoje é o
+`DemoProvider`: valores ilustrativos com `"source": "demo"` e um `"note"`, porque o NISAR só
+entrou em operação depois de 2025 e não há imagens dele das enchentes de 2023–2024. Para usar
+dado real, crie outro provider e troque em `get_provider()`; os endpoints não mudam.
+
+Áreas são calculadas em UTM (metros). Uma cidade conta como atingida quando a mancha cobre
+pelo menos 30% de um círculo de 1 km em volta do centro dela. O ONI da NOAA fica 6 h em cache;
+se a NOAA cair, a API usa o último cache ou responde `live: false` com `error`.
 
 No startup, a conta governo semente (`SEED_GOV_EMAIL` / `SEED_GOV_PASSWORD`) é criada se ainda não existir.
 

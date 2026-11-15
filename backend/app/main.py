@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.db import SessionLocal, create_tables
-from app.routers import auth, regions
+from app.routers import auth, climate, regions
 from app.services.users import ensure_seed_gov
 
 
@@ -43,6 +43,7 @@ async def validation_error(request, exc: RequestValidationError):
 
 app.include_router(auth.router)
 app.include_router(regions.router)
+app.include_router(climate.router)
 
 
 @app.get("/health")
