@@ -30,7 +30,8 @@ const STYLE: maplibregl.StyleSpecification = {
       tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
       tileSize: 256,
       maxzoom: 19,
-      attribution: "© OpenStreetMap contributors",
+      // Tile usage policy: exact HTTPS URL, visible attribution with link, no pre-loading or offline tiles.
+      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
     },
   },
   layers: [
@@ -52,7 +53,8 @@ export default function MapView(p: MapViewProps) {
       style: STYLE,
       bounds: [[p.bbox[0], p.bbox[1]], [p.bbox[2], p.bbox[3]]],
       fitBoundsOptions: { padding: 24 },
-      attributionControl: { compact: true },
+      // Always expanded: the OSM policy forbids hiding the attribution behind a button.
+      attributionControl: { compact: false },
     });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     m.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
