@@ -17,7 +17,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.services.downloads import stats_csv, stats_geojson  # noqa: E402
-from app.services.exposure import compute_exposure  # noqa: E402
 from app.services.store import REPO, Dataset  # noqa: E402
 
 OUT = REPO / "frontend" / "public" / "api"
@@ -59,10 +58,6 @@ def main() -> int:
         shutil.copy(png, dst)
     dump(OUT / "download" / "stats.geojson", stats_geojson(ds))
     (OUT / "download" / "stats.csv").write_text(stats_csv(ds), encoding="utf-8")
-    # Reference answers used to check frontend/lib/exposure.ts against the Python service.
-    samples = [compute_exposure(ds, l["lat"], l["lon"]).model_dump(mode="json")
-               for l in ds.localities["items"]]
-    dump(OUT / "exposure-samples.json", samples)
     print(f"Static API written to {OUT}" + (" (DEV FIXTURE)" if ds.fixture else ""))
     return 0
 

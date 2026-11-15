@@ -1,8 +1,7 @@
 """'Is my area affected?' — answers from what the radar observed, never a forecast.
 
-The same algorithm is mirrored in frontend/lib/exposure.ts for the static
-(serverless) demo. Keep both in sync; backend/tests/test_exposure.py and the
-exported exposure samples guard the behaviour.
+The same steps are repeated in frontend/lib/exposure.ts, so the static demo
+works without a server. If you change one, change the other.
 """
 
 from __future__ import annotations

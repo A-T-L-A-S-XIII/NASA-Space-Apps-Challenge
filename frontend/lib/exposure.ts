@@ -1,6 +1,5 @@
-// Mirror of backend/app/services/exposure.py for the static (serverless) demo.
-// Keep both in sync: `node scripts/check-exposure.ts` compares this code with
-// the Python answers exported to public/api/exposure-samples.json.
+// Same steps as backend/app/services/exposure.py, so the static demo works
+// without a server. If you change one, change the other.
 import type { Timeline } from "./types";
 
 export type ObservedState = "candidate_water" | "no_candidate_water" | "no_valid_observation";

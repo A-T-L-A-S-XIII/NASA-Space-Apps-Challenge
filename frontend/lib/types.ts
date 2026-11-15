@@ -1,4 +1,4 @@
-// Mirrors backend/app/schemas.py (JSON Schemas in docs/contract/).
+// Mirrors backend/app/schemas.py.
 
 export type Sensor = "NISAR" | "Sentinel-1";
 export type BBox = [number, number, number, number]; // west, south, east, north

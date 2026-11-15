@@ -29,6 +29,13 @@ Status: **decided** (team), **to confirm** (decided with a detail still open), *
 | D-09 | Access data (licences, dates, availability to verify): roads and bridges from OpenStreetMap (ODbL, attribution; bridges `bridge=yes`), optional DNIT (SNV) and DAER-RS. Dated interruptions only from official bulletins with date and time (Defesa Civil RS, DAER-RS or PRF), for one case the team chooses. Hydrological reference: SGB critical-events alert system (Taquari stages at Encantado, Lajeado, Estrela) or ANA HidroWeb, as context, not pixel truth. The SGB bulletin of 2026-11-05 12:00 is cited but still to check. Optional independent check: Copernicus EMS or GFM. | decided (sources to verify) |
 | D-10 | Localities: IBGE. Municipal mesh for boundaries, clipped to the AOI; IBGE localities base (seats and districts) for the offline search list. | decided (details during the work) |
 
+## Answers of 2026-11-15, 03:56 BRT (coordinator)
+
+| ID | Decision | Effect |
+|---|---|---|
+| D-11 | Backend: **keep Hugo's work and fit it into the project backend**. His authentication (SQLite, JWT, seed government account), regions and ASF search were brought from branch `backend` (up to `cf89048`) into `backend/` alongside the radar routes; Hugo continues on the project branch. | Reopens D-04 (demo login only, no personal data on the server) and the "static, no server" part of D-08. |
+| D-05 | Name: **Water Waltz** (final). | Renamed in README, NOTICE, LICENSE, app title. |
+
 ## Track A findings (2026-11-15, 02:52–03:10 BRT)
 
 - NISAR coverage **confirmed** by a CMR query (`pipeline/query.py`, results in `data/nisar_granules.json`): 21 GCOV granules since 2025, all fully covering the AOI, in two stacks repeating every 12 days:

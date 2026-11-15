@@ -25,6 +25,9 @@ data/raw/
 data/fixtures/
 frontend/public/api/
 
+# Local databases (backend accounts and tests)
+*.db
+
 # Secrets and local environment
 .env
 .netrc

@@ -1,10 +1,6 @@
-"""Data contract shared by the pipeline, the API and the frontend.
+"""Shapes of the JSON the API returns. frontend/lib/types.ts mirrors them.
 
-Every response carries `fixture`. A DEV FIXTURE is never a result: the demo
-build (pipeline/validate_demo.py) and the static export refuse it.
-
-The JSON Schemas in docs/contract/ are generated from these models with
-`python backend/export_schemas.py`; do not edit them by hand.
+Every response has `fixture`: true means test data, never a result.
 """
 
 from __future__ import annotations
@@ -13,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 Sensor = Literal["NISAR", "Sentinel-1"]
 # [west, south, east, north] in WGS84 degrees.
@@ -180,3 +176,34 @@ class Locality(BaseModel):
 
 class Localities(Contracted):
     items: list[Locality]
+
+
+# --------------------------------------------------------------------- auth
+class UserCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=72)  # bcrypt aceita até 72 bytes
+    city: str | None = None
+    # Campos extras (como "role") são ignorados: o cadastro público é sempre "cidadao"
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    email: EmailStr
+    role: Literal["cidadao", "governo"]
+    city: str | None
+    created_at: datetime
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
