@@ -2,7 +2,7 @@
 
 NASA Space Apps 2026 · Challenge "Dancing with the SARs" · Local Event: Goiânia
 
-> **Work in progress.** The map still runs on test data (marked "DEV FIXTURE"). No NISAR result is shown yet.
+> **Work in progress.** The map still runs on test data (marked "DEV FIXTURE"; test towns are synthetic). No NISAR result is shown yet.
 > Candidate water-change indicator — not a validated flood map. Not for evacuation or route decisions.
 
 ## The idea
@@ -15,6 +15,8 @@ In recent floods in the Taquari Valley (RS, Brazil), many people were affected w
 
 It only shows what the radar observed. It is not a forecast.
 
+**NISAR detects the water; OpenStreetMap roads and IBGE localities provide context.**
+
 ## How it works
 
 ```
@@ -25,11 +27,15 @@ frontend/  Next.js: map, timeline, "Is my area affected?"
 
 For the public demo, `backend/export_static.py` saves the API answers as JSON files, so the site runs on Vercel without a server.
 
-## NASA data
+## NASA data used
 
-NISAR L2 GCOV. A search of NASA's catalogue (`pipeline/query.py`, result in `data/nisar_granules.json`) found 21 images since June 2026 covering our area, on two orbits that repeat every 12 days. The images actually used will be listed in [docs/DATA.md](docs/DATA.md).
+NISAR L2 GCOV, the only source of candidate water. A search of NASA's catalogue (`pipeline/query.py`, result in `data/nisar_granules.json`) found 21 images since June 2026 covering our area, on two orbits that repeat every 12 days. The granules used are listed in [docs/DATA.md](docs/DATA.md).
 
-Sentinel-1 is planned only to add more dates, shown separately.
+## Other data (context only)
+
+- **Basemap:** tiles © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), used under the OpenStreetMap tile usage policy (attribution always visible, no stored or offline tiles).
+- **Roads:** OpenStreetMap main roads (motorway to tertiary) inside the study area, extracted with `pipeline/fetch_roads.py` (OSM data timestamp in `data/roads/osm_roads.geojson`). Road data © OpenStreetMap contributors, available under the [Open Database License (ODbL)](https://www.openstreetmap.org/copyright). The road file is derived from OSM and is under the ODbL, not under the MIT licence of the code.
+- **Localities:** IBGE municipal seats and localities *[to add; product, version and licence to verify]*.
 
 ## How to run
 
@@ -47,6 +53,15 @@ TFW_DATA_DIR=data/fixtures uvicorn app.main:app --app-dir backend --reload
 ```
 
 Before publishing, `python pipeline/validate_demo.py` must pass: it refuses test data.
+
+### Deploy the frontend (Vercel)
+
+1. `python backend/export_static.py` (real data in `data/demo/`), then commit `frontend/public/api/`.
+2. On vercel.com: **Add New → Project**, import this repository, set **Root Directory** to `frontend`. The framework is detected as Next.js; `next.config.mjs` already sets a static export.
+3. Environment variables: `NEXT_PUBLIC_API_BASE` = the public API URL (leave empty to use the static files only).
+4. Deploy, then open the link in a private window.
+
+Where the API itself runs is still open: the accounts use a SQLite file, which serverless hosting does not keep.
 
 ## Method and limits
 

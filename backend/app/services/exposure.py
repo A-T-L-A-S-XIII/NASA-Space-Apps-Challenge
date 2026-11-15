@@ -17,7 +17,7 @@ from .store import Dataset
 
 NO_VALID, LAND, WATER = 0, 1, 2
 WATER_SEARCH_RADIUS_M = 2000.0
-ACCESS_RADIUS_M = 3000.0
+EXIT_RADIUS_M = 2000.0  # proposal (D-14); 3–5 km may suit larger towns
 ROAD_SAMPLE_M = 50.0
 M_PER_DEG_LAT = 110_574.0
 M_PER_DEG_LON_EQ = 111_320.0
@@ -68,39 +68,101 @@ def _densify(coords: list[list[float]], step_m: float):
             yield lat1 + (lat2 - lat1) * t, lon1 + (lon2 - lon1) * t
 
 
-def _access(ds: Dataset, latest_id: str, latest_time: datetime, lat: float, lon: float) -> Access:
-    feats = (ds.access or {}).get("features", [])
-    interruptions = [
-        f for f in feats
-        if f["properties"].get("kind") == "interruption" and f["geometry"]["type"] == "Point"
-        and _dist_m(lat, lon, f["geometry"]["coordinates"][1], f["geometry"]["coordinates"][0])
-        <= ACCESS_RADIUS_M
-    ]
-    if interruptions:
-        f = max(interruptions, key=lambda f: f["properties"]["time"])
+def _lines(geom: dict) -> list[list[list[float]]]:
+    if geom["type"] == "LineString":
+        return [geom["coordinates"]]
+    if geom["type"] == "MultiLineString":
+        return geom["coordinates"]
+    return []
+
+
+def road_exits(ds: Dataset, date_id: str, lat: float, lon: float,
+               radius_m: float = EXIT_RADIUS_M) -> list[dict]:
+    """Road segments that cross the circle around a point (the 'exits').
+
+    An exit is *cut* if a part of it inside the circle lies on candidate water
+    (cells with a valid observation only); *observed* if any part inside the
+    circle has a valid observation.
+    """
+    state = ds.states[date_id]
+    exits = []
+    for f in (ds.access or {}).get("features", []):
         p = f["properties"]
+        if p.get("kind") not in ("road", "bridge"):
+            continue
+        inside = outside = cut = observed = False
+        for line in _lines(f["geometry"]):
+            for plat, plon in _densify(line, ROAD_SAMPLE_M):
+                if _dist_m(lat, lon, plat, plon) > radius_m:
+                    outside = True
+                    continue
+                inside = True
+                c = _cell(ds, plat, plon)
+                v = int(state[c]) if c else NO_VALID
+                if v != NO_VALID:
+                    observed = True
+                if v == WATER:
+                    cut = True
+        if inside and outside:
+            exits.append({"id": p["id"], "name": p.get("name"), "cut": cut, "observed": observed})
+    return exits
+
+
+def flagged_road_ids(ds: Dataset, date_id: str) -> list[str]:
+    """Road segments crossing candidate water on a date (valid cells only), for the map."""
+    state = ds.states[date_id]
+    out = []
+    for f in (ds.access or {}).get("features", []):
+        p = f["properties"]
+        if p.get("kind") not in ("road", "bridge"):
+            continue
+        hit = False
+        for line in _lines(f["geometry"]):
+            for plat, plon in _densify(line, ROAD_SAMPLE_M):
+                c = _cell(ds, plat, plon)
+                if c and state[c] == WATER:
+                    hit = True
+                    break
+            if hit:
+                break
+        if hit:
+            out.append(p["id"])
+    return out
+
+
+def _access(ds: Dataset, latest_id: str, latest_time: datetime, lat: float, lon: float) -> Access:
+    exits = road_exits(ds, latest_id, lat, lon)
+    exit_ids = {e["id"] for e in exits}
+    cut_ids = [e["id"] for e in exits if e["cut"]]
+    common = {"exits": len(exits), "cut_exit_ids": cut_ids}
+
+    # (a) an official bulletin covers one of the exits
+    bulletins = [b for b in ds.bulletins if b.get("segment_id") in exit_ids]
+    if bulletins:
+        b = max(bulletins, key=lambda b: b["time"])
         return Access(status=AccessStatus.interruption_confirmed,
-                      label=f"Interruption confirmed by {p['source']} at {p['time']}",
-                      basis=Basis.external, source=p["source"], time=p["time"])
-    state = ds.states[latest_id]
-    for f in feats:
-        if f["properties"].get("kind") not in ("road", "bridge"):
-            continue
-        if f["geometry"]["type"] != "LineString":
-            continue
-        for plat, plon in _densify(f["geometry"]["coordinates"], ROAD_SAMPLE_M):
-            if _dist_m(lat, lon, plat, plon) > ACCESS_RADIUS_M:
-                continue
-            c = _cell(ds, plat, plon)
-            if c and state[c] == WATER:
-                return Access(status=AccessStatus.section_requiring_verification,
-                              label="Section requiring verification",
-                              basis=Basis.inference,
-                              source=f"Radar candidate water ({latest_id}) over "
-                                     f"{f['properties'].get('source', 'road data')}",
-                              time=latest_time)
+                      label=f"Interruption confirmed by {b['source']} at {b['time']}",
+                      basis=Basis.external, source=b["source"], time=b["time"], **common)
+    radar_src = f"NISAR candidate water ({latest_id}) over OpenStreetMap roads"
+    # (b) all exits cut
+    if exits and len(cut_ids) == len(exits):
+        return Access(status=AccessStatus.no_path_under_modeled_conditions,
+                      label="No path under modeled conditions", basis=Basis.inference,
+                      source=radar_src, time=latest_time, **common)
+    # (c) at least one exit cut
+    if cut_ids:
+        return Access(status=AccessStatus.section_requiring_verification,
+                      label="Section requiring verification", basis=Basis.inference,
+                      source=radar_src, time=latest_time, **common)
+    # (d) nothing demonstrated; warn when the roads were not observed
+    warning = None
+    if not exits:
+        warning = "No mapped road exits within the search radius."
+    elif not any(e["observed"] for e in exits):
+        warning = "No valid radar observation over the roads in the latest acquisition."
     return Access(status=AccessStatus.isolation_not_demonstrated,
-                  label="Isolation not demonstrated", basis=Basis.inference)
+                  label="Isolation not demonstrated", basis=Basis.inference,
+                  coverage_warning=warning, **common)
 
 
 def compute_exposure(ds: Dataset, lat: float, lon: float) -> Exposure:
@@ -147,6 +209,9 @@ def compute_exposure(ds: Dataset, lat: float, lon: float) -> Exposure:
         Statement(text=access.label, basis=access.basis, source=access.source or "Access analysis",
                   time=access.time),
     ]
+    if access.coverage_warning:
+        statements.append(Statement(text=access.coverage_warning, basis=Basis.inference,
+                                    source="Access analysis", time=last_time))
     return Exposure(
         fixture=ds.fixture, lat=lat, lon=lon, inside_aoi=True, latest=latest,
         history=History(k=k, n=n, total=len(entries),
