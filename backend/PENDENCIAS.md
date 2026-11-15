@@ -10,10 +10,10 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 - [ ] Mostrar no frontend: camada de classes no mapa, classe de cada cidade e a série mensal.
 - [ ] Conferir o resultado contra as enchentes conhecidas (set/2023, nov/2023, mai/2024) e ajustar o limiar se precisar.
 
-### Servir o NISAR já processado (`Fotos/nisar_taquari_50/`)
+### Servir o NISAR já processado (`Fotos/nisar_taquari_50/`) (feito)
 
-- [ ] Criar rotas que sirvam as 19 passagens já processadas: `catalogo.json`, o GeoJSON de cheia e seca de cada data e as imagens.
-- **Já existe:** `GET /api/regions/{id}/nisar-processed`, mas ela só serve as manchas geradas por `scripts/process_nisar.py` (hoje uma: 31/10/2026, trilha `103_A`). As 19 passagens de `Fotos/` ainda não passam pela API.
+- [x] Rotas que servem as 19 passagens já processadas (PR #18): `GET /api/regions/{id}/passes`,
+  `/passes/{n}/geojson`, imagens, municípios e exportação, lidas por `app/services/passes.py`.
 - **Cuidado 1:** a área de água depende da trilha (órbita). A `053_D` mede de 1 a 5 km² e a `103_A` mede de 7 a 9 km², no mesmo rio. Só compare datas da **mesma trilha**.
 - **Cuidado 2:** a área processada vai de −29,15 a −29,55 de latitude, mais ou menos de Muçum a Lajeado. Estrela, Bom Retiro do Sul e Taquari ficam de fora.
 - **Em aberto:** de onde vêm o método, o limiar e a "janela da enchente" (03/07 a 28/08/2026) do catálogo. O notebook que gerou `Fotos/` não está no repositório; a origem dos grânulos está documentada no PR #11 (`docs/DATA.md`).
@@ -56,7 +56,7 @@ sobrou da versão com governo. O frontend não usa nada disso; nada foi removido
 ## Repositório
 
 - [x] Backend integrado ao projeto (branch `teste-agente`, PR #1, já mergeado).
-- [ ] Branch `integracao-mockup` (login pela ponte do Next, conta demo, cadastro desativado): abrir PR e
-  mergear quando a equipe aprovar. Ainda não tem PR nem push.
-- [ ] Revisar e mergear o PR #10 (branch `backend` → `main`) e os PRs #11 a #15.
+- [x] Branch `integracao-mockup` (login pela ponte do Next, conta demo, cadastro desativado): mergeada no PR #18.
+- [x] PR #10 (branch `backend` → `main`) e PRs #11 a #15 mergeados.
+- [ ] Fechar os PRs #16 e #17: o mockup do #17 entrou pelo #18.
 - [ ] Depois dos merges, apagar as branches `nisar-import` (dividida nos PRs #11 a #15) e `teste-agente`.
