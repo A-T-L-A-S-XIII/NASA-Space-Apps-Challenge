@@ -33,8 +33,11 @@ function Painel() {
   const [boasVindas, setBoasVindas] = useState(null);   // id da área cadastrada, enquanto o pop-up estiver aberto
   const [pagina, setPagina] = useState('regioes');   // regioes | previsao | busca (uma por vez)
   const [lugar, setLugar] = useState(null);
-  // região do usuário em foco ao abrir. 🔌 INTEGRAÇÃO: vir do perfil/geolocalização; por ora, a primeira com cenas
-  const [regiaoId, setRegiaoId] = useState(() => REGIOES.find((r) => r.status === 'disponivel')?.id ?? null);
+  // região do usuário em foco ao abrir: a área da cidade cadastrada (fallback: Vale do Taquari)
+  const [regiaoId, setRegiaoId] = useState(() => {
+    const area = sessaoAtual()?.areaCadastrada;
+    return REGIOES.some((r) => r.id === area) ? area : 'vale-do-taquari';
+  });
   const [modo, setModo] = useState('globo');
   const [gaveta, setGaveta] = useState(false);       // só tem efeito no celular (gaveta inferior)
 
@@ -46,7 +49,7 @@ function Painel() {
   }, [gaveta]);
 
   // pop-up de boas-vindas: só logo depois do login
-  useEffect(() => { const s = sessaoAtual(); if (s?.boasVindas) setBoasVindas(s.areaCadastrada ?? REGIOES[0].id); }, []);
+  useEffect(() => { const s = sessaoAtual(); if (s?.boasVindas) setBoasVindas(REGIOES.some((r) => r.id === s.areaCadastrada) ? s.areaCadastrada : 'vale-do-taquari'); }, []);
 
   useEffect(() => {
     Promise.all([obterEvento(), obterPrevisao(), obterAlagamento()]).then(([evento, previsao, alagamento]) => {

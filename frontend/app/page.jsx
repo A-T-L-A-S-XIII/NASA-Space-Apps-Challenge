@@ -3,6 +3,7 @@ import { useTela } from '@/lib/tema';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { entrar } from '@/lib/sessao';
+import { ApiError } from '@/lib/api';
 import { Marca } from '@/components/Cabecalho';
 import GotasNanquim from '@/components/GotasNanquim';
 import BotaoTema from '@/components/BotaoTema';
@@ -11,7 +12,7 @@ import TituloRevelado from '@/components/TituloRevelado';
 
 const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/** Tela de login (sem autenticação real — protótipo). */
+/** Tela de login: entra com a conta de demonstração pela API (plano B offline em lib/sessao.js). */
 export default function Login() {
   useTela('login');
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function Login() {
   // após um envio com erro, o foco vai para o resumo de erros (regra error-summary)
   useEffect(() => { if (Object.keys(erros).length) resumo.current?.focus(); }, [erros]);
 
-  function enviar(e) {
+  async function enviar(e) {
     e.preventDefault();
     const novos = {};
     if (!EMAIL_VALIDO.test(email)) novos.email = 'Esse e-mail não parece válido.';
@@ -31,8 +32,16 @@ export default function Login() {
     setErros(novos);
     if (Object.keys(novos).length) return;
     setEnviando(true);
-    entrar(email);
-    setTimeout(() => router.push('/painel'), 350);
+    try {
+      await entrar(email, senha);
+      router.push('/painel');
+    } catch (err) {
+      const semApi = err instanceof ApiError && err.status === 0;
+      setErros({ geral: err instanceof ApiError && err.status === 401 ? 'E-mail ou senha incorretos.'
+        : semApi ? 'Não foi possível conectar ao servidor. Tente de novo em instantes.'
+        : 'Não foi possível entrar agora. Tente de novo.' });
+      setEnviando(false);
+    }
   }
 
   return (
@@ -50,12 +59,13 @@ export default function Login() {
         <Marca grande />
         <div className="revelar" style={{ '--i': 1 }}>
           <h1>Entrar</h1>
-          <p className="nota">Protótipo de demonstração. Qualquer e-mail válido e senha com 4 ou mais caracteres.</p>
+          <p className="nota">Protótipo de demonstração. Use a conta da equipe.</p>
         </div>
         {Object.keys(erros).length > 0 && (
           <div className="resumo-erros" role="alert" tabIndex={-1} ref={resumo} aria-labelledby="titulo-erros">
             <h2 id="titulo-erros">Confira os campos</h2>
             <ul>
+              {erros.geral && <li>{erros.geral}</li>}
               {erros.email && <li><a href="#email" onClick={(e) => { e.preventDefault(); document.getElementById('email').focus(); }}>{erros.email}</a></li>}
               {erros.senha && <li><a href="#senha" onClick={(e) => { e.preventDefault(); document.getElementById('senha').focus(); }}>{erros.senha}</a></li>}
             </ul>
@@ -76,7 +86,10 @@ export default function Login() {
         <div className="revelar" style={{ '--i': 4 }}>
           <Botao type="submit" variante="cta" bloco disabled={enviando}>{enviando ? 'Entrando…' : 'Entrar'}</Botao>
         </div>
-        <p className="login__rodape revelar" style={{ '--i': 5 }}>NASA Space Apps Challenge · equipe Dancing with SARs</p>
+        <div className="revelar" style={{ '--i': 5 }}>
+          <Botao href="/cadastro" variante="fantasma" icone={null} bloco>Criar conta</Botao>
+        </div>
+        <p className="login__rodape revelar" style={{ '--i': 6 }}>NASA Space Apps Challenge · equipe Dancing with SARs</p>
       </form>
     </main>
   );

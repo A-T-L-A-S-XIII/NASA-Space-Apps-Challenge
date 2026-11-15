@@ -69,6 +69,9 @@ export const LOCALIDADES = [
   ['Taquari', -51.864, -29.799], ['Porto Alegre', -51.23, -30.03],
 ].map(([nome, lon, lat]) => ({ nome, uf: 'RS', lon, lat }));
 
+/** Cidades do Vale do Taquari (as localidades sem Porto Alegre): select do cadastro e área do usuário. */
+export const CIDADES = LOCALIDADES.filter((l) => l.nome !== 'Porto Alegre');
+
 export const LIMITACOES = [
   'Apenas duas cenas (11/07 e 23/07): o pico da cheia pode ter ocorrido entre as passagens.',
   'Áreas urbanas densas geram dupla reflexão e podem esconder água entre prédios.',

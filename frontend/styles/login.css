@@ -19,13 +19,13 @@
 
 /* campo com rótulo flutuante e linha que acende */
 .campo { position: relative; display: block; padding-top: .9rem; }
-.campo input { width: 100%; padding: .7rem 0 .6rem; border: 0; border-bottom: 1px solid var(--linha-forte); background: transparent; color: var(--texto); font: inherit; font-size: 1.05rem; outline: none; }
+.campo input, .campo select { width: 100%; padding: .7rem 0 .6rem; border: 0; border-bottom: 1px solid var(--linha-forte); background: transparent; color: var(--texto); font: inherit; font-size: 1.05rem; outline: none; }
 .campo span { position: absolute; left: 0; top: 1.6rem; color: var(--texto-3); pointer-events: none; transition: transform .35s var(--mola), color .35s var(--mola), font-size .35s var(--mola), top .35s var(--mola); }
-.campo input:focus + span, .campo input:not(:placeholder-shown) + span { top: 0; font-size: .75rem; color: var(--lima); }
+.campo input:focus + span, .campo input:not(:placeholder-shown) + span, .campo select + span { top: 0; font-size: .75rem; color: var(--lima); }
 .campo::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--lima); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--mola); }
 .campo:focus-within::after { transform: scaleX(1); }
 .campo small { position: absolute; right: 0; top: 0; font-size: .75rem; color: var(--perigo); }
-.campo--erro input { border-bottom-color: var(--perigo); }
+.campo--erro input, .campo--erro select { border-bottom-color: var(--perigo); }
 .campo--erro::after { background: var(--perigo); transform: scaleX(1); }
 
 @media (max-width: 900px) {
@@ -40,6 +40,10 @@
 .resumo-erros h2 { font-size: 1rem; color: var(--perigo); margin-bottom: .4rem; letter-spacing: -0.01em; }
 .resumo-erros ul { margin: 0; padding-left: 1.1rem; }
 .resumo-erros a { color: var(--texto); text-decoration: underline; text-underline-offset: 3px; }
+/* mesma caixa, em tom neutro, para avisos que não são erro (ex.: cadastro desativado) */
+.resumo-erros--aviso { border-left-color: var(--lima); background: var(--fundo-2); }
+.resumo-erros--aviso a { display: inline-flex; align-items: center; min-height: 44px; }
+.campo select option { background: var(--fundo); color: var(--texto); }
 
 /* ilustração do login: gotas e ondas (cores do tema em temas.css: --gn-*) */
 .gotas-wrap { flex: 1; min-height: 0; display: grid; place-items: center; margin: -1rem -1rem 0; }

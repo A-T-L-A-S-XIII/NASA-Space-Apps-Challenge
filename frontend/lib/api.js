@@ -444,7 +444,7 @@ export function createApi(baseUrl = urlPadrao(), getToken) {
 }
 
 /**
- * Cliente padrão. A sessão do protótipo ainda não tem token.
- * 🔌 INTEGRAÇÃO: trocar o segundo argumento pela leitura do token quando o login usar /api/auth/login.
+ * Cliente padrão, sem token: as rotas de dados são públicas.
+ * O login e o /api/auth/me usam o cliente com token criado em lib/sessao.js.
  */
 export const api = createApi(urlPadrao(), () => null);
