@@ -155,7 +155,7 @@
   const stamp = (extra = "") => `<p class="stamp">${WW.icon.pin}<span>${STAMP}${extra ? " · " + extra : ""}</span></p>`;
   const loading = (txt = "Carregando dados do servidor…") => `<div class="v-state">${txt}</div>`;
   const failed = (e) => `<div class="v-state v-error"><b>Não foi possível carregar.</b><br>${WW.esc(e.message || e)}<br>
-    <small>Confira se a API está rodando em ${WW.esc(WW.api.base)} (veja mockup/README.md).</small></div>`;
+    <small>Confira se a API está rodando em ${WW.esc(WW.api.base)} (veja frontend/README.md).</small></div>`;
   const levelBadge = (cls, label) => `<span class="v-level v-level-${cls}"><span class="dot"></span>${WW.esc(label)}</span>`;
 
   function forecastHTML(f) {

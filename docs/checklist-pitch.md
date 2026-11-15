@@ -5,7 +5,7 @@
 | Serviço | URL |
 |---|---|
 | Site (Next.js na Vercel) | `https://__________.vercel.app` *(preencher depois do deploy)* |
-| API (FastAPI no Render) | `https://__________.onrender.com` *(preencher depois do deploy; `/health` e `/docs` servem para conferir)* |
+| API (FastAPI no Render) | `https://water-waltz-api.onrender.com` (`/health` e `/docs` servem para conferir) |
 
 O navegador só abre o site. Quem chama a API é o servidor do Next.js (variável `API_URL` na Vercel).
 
