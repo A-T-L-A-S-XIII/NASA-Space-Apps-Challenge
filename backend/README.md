@@ -31,6 +31,12 @@ pytest
 | POST | `/api/auth/login` | Retorna `{access_token, token_type, user}` |
 | GET | `/api/auth/me` | Usuário logado (header `Authorization: Bearer <token>`) |
 | POST | `/api/auth/gov-users` | Cria usuário `governo` (só para usuários `governo`) |
+| GET | `/api/regions` | Regiões monitoradas (piloto: `vale-do-taquari`) |
+| GET | `/api/regions/{id}` | Detalhe da região: bbox, centro, cidades e traçado do rio |
+| GET | `/api/regions/{id}/scenes` | Cenas NISAR ao vivo do ASF (`start`, `end`, `product=GCOV`, `limit=25`) |
+
+As cenas vêm do catálogo público do ASF DAAC (sem login), com cache de 30 min.
+Se o ASF estiver fora do ar, a rota responde `live: false`, lista vazia e `error`.
 
 No startup, a conta governo semente (`SEED_GOV_EMAIL` / `SEED_GOV_PASSWORD`) é criada se ainda não existir.
 

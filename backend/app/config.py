@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     seed_gov_email: str = "governo@waterwaltz.dev"
     seed_gov_password: str = "troque-esta-senha"
 
+    # Catálogo público do ASF DAAC (busca não exige login Earthdata)
+    asf_search_url: str = "https://api.daac.asf.alaska.edu/services/search/param"
+    asf_timeout_seconds: float = 30
+    asf_cache_ttl_seconds: int = 30 * 60
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_origins(cls, value):
