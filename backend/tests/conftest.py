@@ -16,6 +16,10 @@ os.environ["DATABASE_URL"] = "sqlite:///./test_water_waltz.db"
 os.environ["JWT_SECRET"] = "chave-de-teste-com-pelo-menos-32-bytes!!"
 os.environ["SEED_GOV_EMAIL"] = "gov@teste.dev"
 os.environ["SEED_GOV_PASSWORD"] = "senha-gov-123"
+os.environ["DEMO_USER_NAME"] = "Demo Teste"
+os.environ["DEMO_USER_EMAIL"] = "demo@teste.dev"
+os.environ["DEMO_USER_PASSWORD"] = "senha-demo-123"
+os.environ["DEMO_USER_CITY"] = "Estrela"
 os.environ["TFW_DATA_DIR"] = str(FIXTURES)
 # Testes nunca usam os snapshots e manchas reais de app/data nem o modo offline do .env
 os.environ["OFFLINE_MODE"] = "false"

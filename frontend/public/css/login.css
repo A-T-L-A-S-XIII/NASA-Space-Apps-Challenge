@@ -75,6 +75,7 @@
   box-shadow: var(--shadow-2);
   color: var(--silk-50);
   animation: cardIn 700ms 150ms var(--ease-out) both;
+  max-height: calc(100dvh - 32px); overflow-y: auto; /* o cadastro é mais alto que o login */
 }
 @keyframes cardIn { from { opacity: 0; transform: translateY(calc(-50% + 16px)); } }
 .login-kicker { font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--sea-300); margin: 0 0 var(--s2); }
@@ -82,15 +83,20 @@
 .login-sub { margin: 0 0 var(--s5); color: var(--text-muted); font-size: 14.5px; }
 .field { display: block; margin-bottom: var(--s4); }
 .field > span:first-child { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
-.field input {
+.field input, .field select {
   width: 100%; height: 48px; padding: 0 var(--s4);
   border-radius: 14px; border: 1.5px solid rgba(254, 250, 223, .2);
   background: rgba(254, 250, 223, .06); color: var(--silk-50); font: inherit; font-size: 15px;
   transition: border-color var(--t-fast);
 }
 .field input::placeholder { color: var(--text-faint); }
-.field input:focus { outline: none; border-color: var(--sea-300); box-shadow: 0 0 0 3px rgba(136, 216, 192, .22); }
-.field input[aria-invalid="true"] { border-color: var(--alert); }
+.field select { appearance: none; padding-right: 44px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 22px) 21px, calc(100% - 16px) 21px; background-size: 6px 6px; background-repeat: no-repeat; }
+.field select option { color: var(--deep-900); background: var(--silk-50); }
+.field input:focus, .field select:focus { outline: none; border-color: var(--sea-300); box-shadow: 0 0 0 3px rgba(136, 216, 192, .22); }
+.field-hint { display: block; margin-top: 6px; font-size: 12.5px; color: var(--text-faint); }
+.field input[aria-invalid="true"], .field select[aria-invalid="true"] { border-color: var(--alert); }
 .field-msg { display: block; margin-top: 6px; font-size: 12.5px; font-weight: 500; color: var(--alert); }
 .field-msg:empty { display: none; }
 .reveal { position: relative; display: block; }
@@ -103,13 +109,18 @@
 .reveal-btn:hover { background: rgba(254, 250, 223, .08); color: var(--silk-50); }
 .reveal-btn svg { width: 19px; height: 19px; }
 .login-row { display: flex; justify-content: space-between; align-items: center; margin: -4px 0 var(--s5); font-size: 13px; color: var(--text-muted); }
-.login-row label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.login-row label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; min-height: 44px; }
 .login-row input { accent-color: var(--sea-300); width: 16px; height: 16px; }
-.login-row a { color: var(--sea-300); font-weight: 500; text-underline-offset: 3px; }
+.login-row a { display: inline-flex; align-items: center; min-height: 44px; color: var(--sea-300); font-weight: 500; text-underline-offset: 3px; }
 .btn-ink { --_bg: var(--sea-300); --_fg: var(--deep-900); --_bd: transparent; width: 100%; min-height: 50px; font: 700 15px var(--font-login-title); }
 .btn-ink:hover { border-color: transparent; }
 .btn-ink:disabled { opacity: .7; cursor: progress; }
 .btn-outline-ink { --_bg: transparent; --_fg: var(--silk-50); --_bd: rgba(254, 250, 223, .3); width: 100%; margin-top: var(--s2); font-family: var(--font-login-body); }
+.login-note { margin: var(--s3) 0 0; font-size: 13px; color: var(--text-muted); text-align: center; }
+.login-status:not(:empty) { margin: 0 0 var(--s3); padding: var(--s3) var(--s4); border-radius: 14px; font-size: 13.5px;
+  background: rgba(136, 216, 192, .12); border: 1px solid rgba(136, 216, 192, .35); color: var(--silk-50); }
+.login-status a { display: inline-flex; align-items: center; min-height: 44px; color: var(--sea-300); font-weight: 700; text-underline-offset: 3px; }
+.login-status:focus, .login-error:focus, .login-title:focus { outline: none; }
 .login-error { color: var(--alert); font-size: 13px; font-weight: 500; min-height: 18px; margin: -6px 0 var(--s2); }
 .login-foot { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid rgba(254, 250, 223, .12); font-size: 12px; color: var(--text-faint); display: flex; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
 

@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     seed_gov_email: str = "governo@waterwaltz.dev"
     seed_gov_password: str = "troque-esta-senha"
 
+    # Conta de demonstração (cidadão) criada no startup se ainda não existir: a única que o frontend usa
+    demo_user_name: str = "Conta de demonstração"
+    demo_user_email: str = "demo@waterwaltz.dev"
+    demo_user_password: str = "troque-esta-senha"
+    demo_user_city: str = "Lajeado"  # uma das cidades do Vale do Taquari: o app abre nela
+
     # Catálogo público do ASF DAAC (busca não exige login Earthdata)
     asf_search_url: str = "https://api.daac.asf.alaska.edu/services/search/param"
     asf_timeout_seconds: float = 30

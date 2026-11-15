@@ -4,7 +4,9 @@
    Europa (0) → meio do Atlântico Norte (0,5) → América do Norte (1).
    Movimento adaptável (WW.motion): com prefers-reduced-motion, Save-Data ou
    pouca memória, o cursor não move a cena e não há interpolação por quadro.
-   Tudo o que anima usa só transform/opacity. Autenticação: POST /api/auth/login.
+   Tudo o que anima usa só transform/opacity. Autenticação: POST /api/auth/login (ponte do Next,
+   que guarda o token num cookie httpOnly). O cartão de cadastro (#/cadastro) só valida os campos:
+   o cadastro está desativado e nada é enviado.
    ========================================================================== */
 (function (WW) {
   "use strict";
@@ -17,7 +19,26 @@
     { key: "na",  label: "América do Norte",     c: 1.0, focus: [0.20, 0.50], layer: { x: 0.13,  y: 0.40, w: 0.30 }, ripple: [0.20, 0.645] },
   ];
 
-  WW.Login = function (root, { onEnter }) {
+  const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  function erroEmail(email) {
+    if (!email) return "Informe o e-mail.";
+    return EMAIL.test(email) ? "" : "Esse e-mail não parece válido.";
+  }
+  const limpo = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v));
+
+  /* Validação por campo: devolve { campo: mensagem } só com os campos inválidos. */
+  WW.validarLogin = ({ email, password }) => limpo({ email: erroEmail(email), password: password ? "" : "Informe a senha." });
+  WW.validarCadastro = ({ name, email, password, city }) => {
+    const cidades = ((window.WW_CONTENT && window.WW_CONTENT.valeMunicipios) || []).map((m) => m.name);
+    return limpo({
+      name: name.length >= 2 ? "" : name ? "O nome precisa de pelo menos 2 letras." : "Informe seu nome.",
+      email: erroEmail(email),
+      password: !password ? "Informe a senha." : password.length < 6 ? "A senha precisa de pelo menos 6 caracteres." : "",
+      city: !city ? "Escolha sua cidade." : cidades.length && !cidades.includes(city) ? "Escolha uma cidade da lista." : "",
+    });
+  };
+
+  WW.Login = function (root, { onEnter, mode: initial = "login" }) {
     // "full": rolagem + cursor + inclinação suavizados; "reduced": só rolagem/setas, sem interpolação
     const fullMotion = WW.motion.full();
     root.innerHTML = `
@@ -42,28 +63,7 @@
               ${ZONES.map((z, i) => `<div class="zi-step" data-z="${z.key}"><span class="bar"></span><b>${String(i + 1).padStart(2, "0")}</b> · ${z.label}</div>`).join("")}
             </div>
 
-            <form class="login-card" id="loginForm" novalidate aria-labelledby="login-title">
-              <p class="login-kicker">Radar NISAR · Vale do Taquari</p>
-              <h1 class="login-title" id="login-title">Entre no Water Waltz</h1>
-              <p class="login-sub">Acompanhe por onde a água passou na sua região, visto pelo radar NISAR.</p>
-              <label class="field"><span>E-mail</span>
-                <input type="email" name="email" autocomplete="username" placeholder="voce@exemplo.com" required aria-describedby="err-email">
-                <span class="field-msg" id="err-email" role="alert"></span></label>
-              <label class="field"><span>Senha</span>
-                <span class="reveal">
-                  <input type="password" name="password" autocomplete="current-password" placeholder="••••••••" required aria-describedby="err-senha">
-                  <button type="button" class="reveal-btn" id="revealBtn" aria-label="Mostrar senha" aria-pressed="false">${WW.icon.eye}</button>
-                </span>
-                <span class="field-msg" id="err-senha" role="alert"></span></label>
-              <div class="login-error" id="loginError" role="alert"></div>
-              <div class="login-row">
-                <label><input type="checkbox" name="remember" checked> Manter conectado</label>
-                <a href="#" onclick="return false">Esqueci a senha</a>
-              </div>
-              <button class="btn btn-ink" type="submit">Entrar ${WW.icon.chevron}</button>
-              <button class="btn btn-outline-ink" type="button" id="guestBtn">Entrar como visitante</button>
-              <div class="login-foot"><span>NASA Space Apps 2026 · Dancing with the SARs</span><span class="badge-demo">mockup</span></div>
-            </form>
+            <div id="cardSlot"></div>
           </div>
         </div>
       </div>`;
@@ -172,48 +172,143 @@
 
     // Teclado: setas também navegam pelas paradas
     root.addEventListener("keydown", (e) => {
-      if (e.target.matches("input")) return;
+      if (e.target.matches("input, select")) return;
       if (e.key === "ArrowDown" || e.key === "ArrowLeft") { target = WW.clamp(target + 0.25, 0, 1); kick(); }
       if (e.key === "ArrowUp" || e.key === "ArrowRight") { target = WW.clamp(target - 0.25, 0, 1); kick(); }
     });
 
-    /* ---------------- Formulário: validação por campo + login no backend ---------------- */
-    const form = WW.$("#loginForm", root), err = WW.$("#loginError", root);
-    const submit = form.querySelector('[type="submit"]');
-    const errEmail = WW.$("#err-email", root), errSenha = WW.$("#err-senha", root);
+    /* ---------------- Cartões: login (POST /api/auth/login) e cadastro (desativado) ---------------- */
+    const slot = WW.$("#cardSlot", root);
     const point = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
     const setErr = (input, box, msg) => { box.textContent = msg; input.setAttribute("aria-invalid", msg ? "true" : "false"); };
+    const foot = `<div class="login-foot"><span>NASA Space Apps 2026 · Dancing with the SARs</span><span class="badge-demo">mockup</span></div>`;
+    const senha = (autocomplete, extra = "") => `
+      <label class="field"><span>Senha</span>
+        <span class="reveal">
+          <input type="password" name="password" autocomplete="${autocomplete}" placeholder="••••••••" required aria-describedby="err-senha${extra ? " dica-senha" : ""}">
+          <button type="button" class="reveal-btn" data-reveal aria-label="Mostrar senha" aria-pressed="false">${WW.icon.eye}</button>
+        </span>
+        ${extra}
+        <span class="field-msg" id="err-senha" role="alert"></span></label>`;
 
-    WW.$("#revealBtn", root).addEventListener("click", (e) => {
-      const btn = e.currentTarget, show = form.password.type === "password";
-      form.password.type = show ? "text" : "password";
-      btn.setAttribute("aria-pressed", show);
-      btn.setAttribute("aria-label", show ? "Esconder senha" : "Mostrar senha");
-      btn.innerHTML = show ? WW.icon.eyeOff : WW.icon.eye;
-    });
-    form.email.addEventListener("input", () => setErr(form.email, errEmail, ""));
-    form.password.addEventListener("input", () => setErr(form.password, errSenha, ""));
+    function bindReveal(form) {
+      form.querySelector("[data-reveal]").addEventListener("click", (e) => {
+        const btn = e.currentTarget, show = form.password.type === "password";
+        form.password.type = show ? "text" : "password";
+        btn.setAttribute("aria-pressed", show);
+        btn.setAttribute("aria-label", show ? "Esconder senha" : "Mostrar senha");
+        btn.innerHTML = show ? WW.icon.eyeOff : WW.icon.eye;
+      });
+    }
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = form.email.value.trim(), pw = form.password.value;
-      let bad = false;
-      if (!email) { setErr(form.email, errEmail, "Informe o e-mail."); bad = true; }
-      else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setErr(form.email, errEmail, "Esse e-mail não parece válido."); bad = true; }
-      if (!pw) { setErr(form.password, errSenha, "Informe a senha."); bad = true; }
-      if (bad) { err.textContent = "Confira os campos."; (form.querySelector('[aria-invalid="true"]') || form.email).focus(); return; }
-      err.textContent = ""; submit.disabled = true; submit.textContent = "Entrando…";
-      try {
-        await WW.api.login(email, pw);
-        onEnter(point(submit));
-      } catch (ex) {
-        err.textContent = ex.status === 401 ? "E-mail ou senha incorretos."
-          : ex.status ? ex.message : "Não foi possível falar com o servidor. Tente entrar como visitante.";
-      } finally {
-        submit.disabled = false; submit.innerHTML = `Entrar ${WW.icon.chevron}`;
+    // Marca cada campo; devolve true se houver erro (o foco vai para o primeiro campo inválido)
+    function mark(form, erros, boxes, err) {
+      for (const [nome, box] of Object.entries(boxes)) setErr(form[nome], box, erros[nome] || "");
+      if (!Object.keys(erros).length) return false;
+      err.textContent = "Confira os campos.";
+      (form.querySelector('[aria-invalid="true"]') || form.elements[0]).focus();
+      return true;
+    }
+
+    function cardLogin() {
+      slot.innerHTML = `
+        <form class="login-card" id="loginForm" novalidate aria-labelledby="login-title">
+          <p class="login-kicker">Radar NISAR · Vale do Taquari</p>
+          <h1 class="login-title" id="login-title" tabindex="-1">Entre no Water Waltz</h1>
+          <p class="login-sub">Acompanhe por onde a água passou na sua região, visto pelo radar NISAR.</p>
+          <label class="field"><span>E-mail</span>
+            <input type="email" name="email" autocomplete="username" placeholder="voce@exemplo.com" required aria-describedby="err-email">
+            <span class="field-msg" id="err-email" role="alert"></span></label>
+          ${senha("current-password")}
+          <div class="login-error" id="loginError" role="alert" tabindex="-1"></div>
+          <div class="login-row">
+            <label><input type="checkbox" name="remember" checked> Manter conectado</label>
+            <a href="#" onclick="return false">Esqueci a senha</a>
+          </div>
+          <button class="btn btn-ink" type="submit">Entrar ${WW.icon.chevron}</button>
+          <p class="login-note">Protótipo de demonstração. Use a conta da equipe.</p>
+          <a class="btn btn-outline-ink" href="#/cadastro">Criar conta</a>
+          ${foot}
+        </form>`;
+      const form = WW.$("#loginForm", root), err = WW.$("#loginError", root);
+      const submit = form.querySelector('[type="submit"]');
+      const boxes = { email: WW.$("#err-email", root), password: WW.$("#err-senha", root) };
+      bindReveal(form);
+      for (const n of Object.keys(boxes)) form[n].addEventListener("input", () => setErr(form[n], boxes[n], ""));
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = form.email.value.trim(), pw = form.password.value;
+        if (mark(form, WW.validarLogin({ email, password: pw }), boxes, err)) return;
+        err.textContent = ""; submit.disabled = true; submit.textContent = "Entrando…";
+        try {
+          const sessao = await WW.api.login(email, pw, form.remember.checked);
+          onEnter(point(submit), sessao);
+        } catch (ex) {
+          err.textContent = ex.status === 401 ? "E-mail ou senha incorretos."
+            : ex.status === 502 || ex.status === 504 || !ex.status ? "Não foi possível falar com o servidor. Entre com a conta de demonstração."
+            : ex.message;
+          err.focus();
+        } finally {
+          submit.disabled = false; submit.innerHTML = `Entrar ${WW.icon.chevron}`;
+        }
+      });
+      return form;
+    }
+
+    function cardCadastro() {
+      const cidades = (window.WW_CONTENT.valeMunicipios || []).map((m) => `<option value="${WW.esc(m.name)}">${WW.esc(m.name)}</option>`).join("");
+      slot.innerHTML = `
+        <form class="login-card" id="signupForm" novalidate aria-labelledby="signup-title">
+          <p class="login-kicker">Radar NISAR · Vale do Taquari</p>
+          <h1 class="login-title" id="signup-title" tabindex="-1">Crie sua conta</h1>
+          <p class="login-sub">Acompanhe a água na sua cidade do Vale do Taquari.</p>
+          <label class="field"><span>Nome</span>
+            <input type="text" name="name" autocomplete="name" placeholder="Seu nome" required aria-describedby="err-nome">
+            <span class="field-msg" id="err-nome" role="alert"></span></label>
+          <label class="field"><span>E-mail</span>
+            <input type="email" name="email" autocomplete="email" placeholder="voce@exemplo.com" required aria-describedby="err-email">
+            <span class="field-msg" id="err-email" role="alert"></span></label>
+          ${senha("new-password", `<span class="field-hint" id="dica-senha">Pelo menos 6 caracteres.</span>`)}
+          <label class="field"><span>Cidade</span>
+            <select name="city" required aria-describedby="err-cidade">
+              <option value="">Escolha sua cidade</option>${cidades}
+            </select>
+            <span class="field-msg" id="err-cidade" role="alert"></span></label>
+          <div class="login-error" id="signupError" role="alert"></div>
+          <div class="login-status" id="signupStatus" role="status" tabindex="-1"></div>
+          <button class="btn btn-ink" type="submit">Criar conta ${WW.icon.chevron}</button>
+          <a class="btn btn-outline-ink" href="#/login">Já tenho acesso: entrar</a>
+          ${foot}
+        </form>`;
+      const form = WW.$("#signupForm", root), err = WW.$("#signupError", root), status = WW.$("#signupStatus", root);
+      const boxes = { name: WW.$("#err-nome", root), email: WW.$("#err-email", root), password: WW.$("#err-senha", root), city: WW.$("#err-cidade", root) };
+      bindReveal(form);
+      for (const n of Object.keys(boxes)) {
+        form[n].addEventListener(n === "city" ? "change" : "input", () => { setErr(form[n], boxes[n], ""); status.textContent = ""; });
       }
-    });
-    WW.$("#guestBtn", root).addEventListener("click", (e) => { WW.api.logout(); onEnter(point(e.currentTarget)); });
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        status.textContent = "";
+        const dados = { name: form.name.value.trim(), email: form.email.value.trim(), password: form.password.value, city: form.city.value };
+        if (mark(form, WW.validarCadastro(dados), boxes, err)) return;
+        err.textContent = "";
+        // Cadastro desativado nesta demonstração: nada é enviado (nenhum POST /register)
+        status.innerHTML = `O cadastro está desativado nesta demonstração. Entre com a conta de demonstração. <a href="#/login">Ir para o login</a>`;
+        status.focus();
+      });
+      return form;
+    }
+
+    let mode = null;
+    function setMode(m, { focus = true } = {}) {
+      if (m === mode) return;
+      mode = m;
+      (m === "cadastro" ? cardCadastro : cardLogin)();
+      if (focus) WW.$(".login-title", root).focus();
+    }
+    setMode(initial === "cadastro" ? "cadastro" : "login", { focus: false });
 
     window.addEventListener("resize", layout);
     const onVis = () => { if (!document.hidden) kick(); }; // aba em segundo plano: o loop para sozinho
@@ -222,6 +317,6 @@
     Promise.all(imgs.map((im) => (im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })))).then(layout);
     layout();
 
-    return { destroy() { alive = false; window.removeEventListener("resize", layout); document.removeEventListener("visibilitychange", onVis); } };
+    return { setMode, destroy() { alive = false; window.removeEventListener("resize", layout); document.removeEventListener("visibilitychange", onVis); } };
   };
 })(window.WW);

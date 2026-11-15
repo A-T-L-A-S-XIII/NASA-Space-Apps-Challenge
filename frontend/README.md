@@ -5,17 +5,25 @@ As telas do **Vale do Taquari** usam os dados reais do backend (`backend/`). O g
 
 ## Como rodar
 
-Rode os dois servidores, cada um no seu terminal:
+Na primeira vez, copie os modelos de configuração e troque `DEMO_USER_PASSWORD` e `JWT_SECRET` no
+`backend/.env` (a senha da conta de demonstração é a que estiver ali):
 
 ```bash
-backend/.venv/Scripts/python -m uvicorn app.main:app --app-dir backend --port 8000
+cp backend/.env.example backend/.env && cp frontend/.env.example frontend/.env.local
+```
+
+Rode os dois servidores, cada um no seu terminal. O FastAPI roda de dentro de `backend/`, porque o `.env` é lido
+da pasta atual (no Windows, use `.venv\Scripts\python`):
+
+```bash
+cd backend && .venv/bin/python -m uvicorn app.main:app --port 8000
 ```
 
 ```bash
 cd frontend && npm install && npm run dev
 ```
 
-Depois abra http://localhost:3000. O Next.js só serve o mockup de `public/` e repassa `/api/*` para o FastAPI
+Depois abra http://localhost:3000 e entre com `DEMO_USER_EMAIL` e `DEMO_USER_PASSWORD` do `backend/.env`. O Next.js só serve o mockup de `public/` e repassa `/api/*` para o FastAPI
 (rewrite em `next.config.js`). O endereço do FastAPI vem de `API_URL`, lida no servidor (modelo em
 `.env.example`; padrão `http://localhost:8000`). O navegador só vê caminhos relativos.
 
@@ -28,12 +36,25 @@ Depois abra http://localhost:3000. O Next.js só serve o mockup de `public/` e r
 bairros, login e downloads precisam da API. Para atualizar os arquivos, com o FastAPI ligado:
 `node scripts/gerar-fallback.mjs`.
 
-O login usa `/api/auth/login`. Sem conta, use "Entrar como visitante".
+**Login:** há uma conta só, a de demonstração, criada pelo FastAPI no startup a partir de `DEMO_USER_*` no
+`backend/.env`. O navegador fala com a ponte do Next (`app/api/auth/login`, `/me`, `/logout`, lógica em
+`lib/auth.mjs`): o token vai para um cookie `ww_token` httpOnly (SameSite=Lax, Secure em produção) e a página
+recebe só nome e cidade. As outras rotas `/api/*` ganham o `Authorization` a partir do cookie em `middleware.js`.
+As telas internas validam a sessão com `/api/auth/me`; um 401 volta ao login. A cidade do usuário define o
+município inicial (a região é sempre `vale-do-taquari`).
+
+**Plano B do login:** com o FastAPI inacessível (a ponte devolve 502/504, nunca 401), só o e-mail de
+`DEMO_EMAIL` (`.env.local`, lido no servidor) entra, numa sessão offline com aviso no console. A senha nunca
+fica no frontend.
+
+**Cadastro (`#/cadastro`):** existe só para mostrar a tela. Valida nome, e-mail, senha e cidade e, com tudo
+válido, avisa que o cadastro está desativado. Não chama `/api/auth/register`.
 
 ## Telas
 
 | Rota | Tela |
 |---|---|
+| `#/cadastro` | Cadastro desativado: mesmo cartão do login com nome, e-mail, senha e cidade do Vale do Taquari. Só valida e avisa. |
 | `#/login` | Login: mapa do Atlântico Norte em tinta sobre papel kraft. Rolar ou mover o cursor faz cada região saltar do papel (Europa → Atlântico Norte → América do Norte). Valida cada campo, tem botão para mostrar a senha e entra via `/api/auth/login`. |
 | `#/inicio` | Aba 1 · Visão geral: 1/4 do globo, frase central e subaba de notícias da região (conteúdo de exemplo). |
 | `#/explorar/...` | Aba 2 · Explorar dados: continente, país, estado e município (valores simulados). No estado e no município aparece o atalho para o painel do Vale. |

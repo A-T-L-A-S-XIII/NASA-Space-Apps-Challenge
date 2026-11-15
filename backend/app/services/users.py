@@ -23,7 +23,12 @@ def create_user(db: Session, name: str, email: str, password: str, role: str, ci
     return user
 
 
+def ensure_seed_user(db: Session, name: str, email: str, password: str, role: str, city: str | None = None) -> None:
+    """Cria uma conta semente se ela ainda não existir."""
+    if get_user_by_email(db, email) is None:
+        create_user(db, name=name, email=email, password=password, role=role, city=city)
+
+
 def ensure_seed_gov(db: Session, name: str, email: str, password: str) -> None:
     """Cria a conta governo semente se ela ainda não existir."""
-    if get_user_by_email(db, email) is None:
-        create_user(db, name=name, email=email, password=password, role="governo")
+    ensure_seed_user(db, name, email, password, role="governo")

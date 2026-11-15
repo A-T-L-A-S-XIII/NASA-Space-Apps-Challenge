@@ -1,6 +1,7 @@
 /* ==========================================================================
    App: roteamento por hash, topbar compartilhada, tema e fluxo de região.
-   #/login · #/inicio · #/explorar[/SA[/BRA[/43[/<município>]]]] · #/vale · #/vale/dados
+   #/login · #/cadastro · #/inicio · #/explorar[/SA[/BRA[/43[/<município>]]]] · #/vale · #/vale/dados
+   As telas internas só abrem com sessão válida (/api/auth/me); um 401 volta ao login.
    ========================================================================== */
 (function (WW) {
   "use strict";
@@ -15,7 +16,7 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
   };
 
-  let authed = store.get("ww-auth") === "1";
+  let session = null; // { user, offline } depois do login ou do /api/auth/me
   let login = null, home = null, explore = null, currentTab = null, valeView = null;
 
   const vLogin = WW.$("#view-login"), vMain = WW.$("#view-main");
@@ -53,7 +54,11 @@
       const t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
       prefs.set("ww-theme", t); applyTheme(t);
     });
-    WW.$("#logoutBtn").addEventListener("click", () => { authed = false; WW.api.logout(); store.del("ww-auth"); store.del("ww-path"); location.hash = "#/login"; });
+    WW.$("#logoutBtn").addEventListener("click", async () => {
+      session = null; store.del("ww-path");
+      await WW.api.logout();
+      location.hash = "#/login";
+    });
     applyTheme(prefs.get("ww-theme") || "dark");
     WW.mode.bind(WW.$("#topbar"));
   }
@@ -85,19 +90,32 @@
     location.hash = "#/explorar/SA";
   };
 
-  /* ---------------- telas ---------------- */
-  function showLogin() {
-    vMain.hidden = true; vLogin.hidden = false; vLogin.classList.add("view-enter");
-    home && home.hide(); explore && explore.hide();
-    if (!login) login = WW.Login(vLogin, { onEnter: enterApp });
+  /* ---------------- cidade do usuário → município e região iniciais ---------------- */
+  const REGIAO_PADRAO = { region: "vale-do-taquari", regionName: "Vale do Taquari" };
+  const norm = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  function applyCity(user) {
+    const m = (C.valeMunicipios || []).find((x) => norm(x.name) === norm(user && user.city));
+    // Só há uma região monitorada: cidade fora da lista (ou sem cidade) também abre no Vale do Taquari
+    Object.assign(loc, REGIAO_PADRAO);
+    if (m) Object.assign(loc, { municipality: m.id, municipalityName: m.name, lon: m.lon, lat: m.lat });
+    if (user && user.name) { C.user.name = user.name; C.user.initials = user.name.trim().charAt(0).toUpperCase(); }
   }
 
-  function enterApp(pt) {
+  /* ---------------- telas ---------------- */
+  function showLogin(mode) {
+    vMain.hidden = true; vLogin.hidden = false; vLogin.classList.add("view-enter");
+    home && home.hide(); explore && explore.hide();
+    if (!login) login = WW.Login(vLogin, { onEnter: enterApp, mode });
+    else login.setMode(mode);
+    document.title = (mode === "cadastro" ? "Criar conta" : "Entrar") + " · Water Waltz";
+  }
+
+  function enterApp(pt, s) {
     const wipe = WW.$("#inkWipe");
     wipe.style.setProperty("--x", pt.x + "px"); wipe.style.setProperty("--y", pt.y + "px");
     wipe.classList.add("is-on");
     setTimeout(() => {
-      authed = true; store.set("ww-auth", "1");
+      session = s;
       location.hash = "#/inicio";
       setTimeout(() => { wipe.style.transition = "opacity 600ms ease"; wipe.style.opacity = "0"; }, 60);
       setTimeout(() => { wipe.classList.remove("is-on"); wipe.style.cssText = ""; }, 760);
@@ -106,6 +124,7 @@
 
   function ensureMain() {
     if (!vMain.dataset.ready) {
+      applyCity(session.user);
       topbar();
       home = WW.Home(tHome, { content: C, onRegion: WW.requestRegion });
       explore = WW.Explore(tExplore, {
@@ -115,10 +134,10 @@
       });
       vMain.dataset.ready = "1";
     }
-    const u = WW.api.user();
+    const u = session.user || {};
     const av = WW.$("#avatar");
-    av.textContent = u ? u.name.trim().charAt(0).toUpperCase() : "V";
-    av.title = u ? `${u.name} · ${u.email}` : "Visitante";
+    av.textContent = (u.name || "?").trim().charAt(0).toUpperCase();
+    av.title = [u.name, u.city, session.offline ? "offline" : ""].filter(Boolean).join(" · ");
     if (vMain.hidden) { vLogin.hidden = true; vMain.hidden = false; vMain.classList.add("view-enter"); if (login) { login.destroy(); login = null; vLogin.innerHTML = ""; } }
   }
 
@@ -142,9 +161,16 @@
     return changed;
   }
 
-  function route() {
+  async function route() {
     const h = location.hash || "";
-    if (!authed || h === "#/login" || h === "") { if (authed && h === "") { location.hash = "#/inicio"; return; } return showLogin(); }
+    if (h === "#/login") return showLogin("login");
+    if (h === "#/cadastro") return showLogin("cadastro");
+    if (!session) {
+      try { session = await WW.api.me(); } catch (e) { session = null; }
+      if (h !== (location.hash || "")) return; // a rota mudou enquanto a sessão era validada
+    }
+    if (!session) { location.hash = "#/login"; return; }
+    if (h === "") { location.hash = "#/inicio"; return; }
     ensureMain();
     if (h.startsWith("#/vale")) {
       setTab("vale");

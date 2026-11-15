@@ -7,6 +7,8 @@
      /api/lugares). Aqui eles viram as rotas do main e os campos voltam com os
      nomes que as telas já usam.
    - Plano B: se a API estiver fora, os dados vêm de data/fallback/ e o console avisa.
+   - Sessão: o token fica num cookie httpOnly gravado pelo Next.js (app/api/auth/*);
+     este arquivo nunca o vê. Aqui só ficam o nome e a cidade do usuário.
    - Toda resposta traz "origem": "nisar", "demo", "open-meteo" (o "source" da API)
      ou "local" (plano B).
    ========================================================================== */
@@ -42,15 +44,13 @@
   };
 
   class ApiError extends Error {
-    constructor(message, status) { super(message); this.status = status; }
+    constructor(message, status, data) { super(message); this.status = status; this.data = data; }
   }
 
   /* ------------------------------------------------------------------ rede */
   async function request(path, { method = "GET", body } = {}) {
     const headers = { Accept: "application/json" };
     if (body) headers["Content-Type"] = "application/json";
-    const token = ss.get("ww-token");
-    if (token) headers.Authorization = "Bearer " + token;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     let r, data;
@@ -66,7 +66,7 @@
     if (!r.ok) {
       const detail = data && typeof data.detail === "string" ? data.detail : null;
       // 500/502/504 sem "detail" vêm do Next.js quando o FastAPI não responde
-      throw new ApiError(detail || (r.status >= 500 ? `A API está fora do ar (erro ${r.status}).` : `Erro ${r.status} da API.`), r.status);
+      throw new ApiError(detail || (r.status >= 500 ? `A API está fora do ar (erro ${r.status}).` : `Erro ${r.status} da API.`), r.status, data);
     }
     if (data === null) throw new ApiError("A API devolveu uma resposta que não é JSON.", r.status);
     return data;
@@ -323,19 +323,66 @@
     return path;
   }
 
+  /* ---------------------------------------------------------------- sessão */
+  const USER = "ww-user", OFFLINE = "ww-offline";
+  let sessao = null; // promessa de { user, offline }: /api/auth/me roda uma vez por carga da página
+
+  function user() { try { return JSON.parse(ss.get(USER) || "null"); } catch (e) { return null; } }
+  function limpar() { ss.del(USER); ss.del(OFFLINE); sessao = null; }
+  function guardar(u, offline) {
+    ss.set(USER, JSON.stringify(u));
+    if (offline) ss.set(OFFLINE, "1"); else ss.del(OFFLINE);
+    const s = { user: u, offline };
+    sessao = Promise.resolve(s);
+    return s;
+  }
+  const semServidor = (e) => e.status === 502 || e.status === 504;
+
+  /* Login pela ponte do Next. Com o FastAPI inacessível (502/504, nunca 401), só o e-mail da conta
+     de demonstração entra, numa sessão offline. */
+  async function login(email, password, remember = true) {
+    try {
+      const res = await request("/api/auth/login", { method: "POST", body: { email, password, remember } });
+      return guardar(res.user, false);
+    } catch (e) {
+      const demo = e.data && e.data.demo_email;
+      if (semServidor(e) && demo && email.trim().toLowerCase() === demo.toLowerCase()) {
+        console.warn(`[WW.api] Login sem o servidor (${e.message}). Entrando com a conta de demonstração em modo offline.`);
+        return guardar({ name: "Conta de demonstração", city: null }, true);
+      }
+      throw e;
+    }
+  }
+
+  /* Valida a sessão do cookie. 401 sempre derruba; 502/504 só mantém uma sessão offline. */
+  function me() {
+    if (sessao) return sessao;
+    sessao = request("/api/auth/me").then((res) => guardar(res.user, false), (e) => {
+      if (semServidor(e) && ss.get(OFFLINE) === "1" && user()) {
+        console.warn(`[WW.api] /api/auth/me falhou (${e.message}). Sessão de demonstração offline.`);
+        return guardar(user(), true);
+      }
+      limpar();
+      throw e;
+    });
+    return sessao;
+  }
+
+  async function logout() {
+    limpar();
+    try { await request("/api/auth/logout", { method: "POST" }); } catch (e) { /* o cookie expira sozinho */ }
+  }
+
   WW.api = {
     // Só para a mensagem de erro das telas: é o endereço do próprio site
     base: (window.location && window.location.origin) || "",
     url,
     ApiError,
     get,
-    async login(email, password) {
-      const res = await request("/api/auth/login", { method: "POST", body: { email, password } });
-      ss.set("ww-token", res.access_token);
-      ss.set("ww-user", JSON.stringify(res.user));
-      return res;
-    },
-    logout() { ss.del("ww-token"); ss.del("ww-user"); },
-    user() { try { return JSON.parse(ss.get("ww-user") || "null"); } catch (e) { return null; } },
+    login,
+    me,
+    logout,
+    user,
+    offline: () => ss.get("ww-offline") === "1",
   };
 })(window.WW);

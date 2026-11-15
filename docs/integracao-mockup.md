@@ -23,8 +23,8 @@ Fontes lidas: `backend/app/routers/*`, `backend/app/schemas.py`, `backend/app/co
 ## Como o mockup fala com a API
 
 - `js/api.js` é o único arquivo com `fetch`. A base vem de `?api=` na URL, de `window.WW_API_BASE` ou, por
-  padrão, de `http://localhost:8000`. Faz cache dos GET em memória e manda `Authorization: Bearer` quando há um
-  token no `sessionStorage` (`ww-token`).
+  padrão, de `http://localhost:8000`. Faz cache dos GET em memória e mandava `Authorization: Bearer` com o
+  token do `sessionStorage` (`ww-token`). Hoje o token fica num cookie httpOnly (ver "Login e cadastro no mockup").
 - Além do `fetch`, o mockup monta URLs com `WW.api.url(...)` para `<img src>` e para os links `download`.
 - Só as telas do Vale (`#/vale`, `#/vale/dados`), a pílula **Satélite** da Visão geral e o login chamam a
   API. O globo e o Explorar dados (`js/explore.js`, `data/content.js`) usam dados locais marcados como
@@ -103,16 +103,23 @@ O PR saiu de `ed8a7ea` e, para chegar ao estado dele, **apagaria** do main: aler
 
 ## Login e cadastro no mockup
 
-- **Login (`js/login.js`):** valida e-mail e senha no navegador e chama `POST /api/auth/login`. Guarda
-  `access_token` em `ww-token` e o usuário em `ww-user` (`sessionStorage`). Em erro, mostra "E-mail ou senha
-  incorretos." no 401, o `detail` da API nos outros códigos e "Não foi possível falar com o servidor. Tente
-  entrar como visitante." sem resposta.
-- **Visitante:** o botão "Entrar como visitante" apaga o token e entra sem login. Todas as rotas que o mockup
-  usa são públicas, então o visitante vê tudo. O avatar mostra "V".
-- **"Logado" é só um marcador local:** `app.js` grava `ww-auth = "1"` e não chama `/api/auth/me`. O token não é
-  conferido de novo, e nenhuma tela depende dele.
-- **Sair:** apaga o token, o usuário e `ww-auth`, e volta para `#/login`.
-- **Conta para entrar:** no main, a única conta criada no startup é a de governo (`SEED_GOV_*`, role
-  `governo`). Não há conta de demonstração de cidadão. O README do mockup sugere `POST /api/auth/register`.
-- **Cadastro:** **não existe tela de cadastro** no mockup. Não há link, rota nem formulário. Também não há
-  chamada para `/api/auth/register`.
+- **Conta:** uma só, a de demonstração (role `cidadao`), criada pelo FastAPI no startup a partir de
+  `DEMO_USER_NAME`, `DEMO_USER_EMAIL`, `DEMO_USER_PASSWORD` e `DEMO_USER_CITY` (`ensure_seed_user`). Não há conta
+  governo no frontend.
+- **Ponte no Next (`frontend/lib/auth.mjs`):** `POST /api/auth/login` chama o FastAPI e grava o token no cookie
+  `ww_token` (httpOnly, SameSite=Lax, Secure em produção; sem "Manter conectado", cookie de sessão). A resposta
+  traz só `{ user: { name, city } }`. `GET /api/auth/me` manda `Authorization: Bearer` a partir do cookie.
+  `POST /api/auth/logout` apaga o cookie. Com o FastAPI inacessível a ponte devolve 502 (rede) ou 504 (tempo).
+  As demais rotas `/api/*` recebem o `Authorization` do cookie em `frontend/middleware.js`.
+- **Login (`js/login.js`):** valida os campos e chama a ponte. 401 → "E-mail ou senha incorretos." na área de
+  erro, com foco nela. Abaixo do botão: "Protótipo de demonstração. Use a conta da equipe." e "Criar conta".
+  Não há mais "Entrar como visitante".
+- **Sessão (`js/api.js`, `js/app.js`):** o `sessionStorage` guarda só nome e cidade (`ww-user`). As telas
+  internas chamam `/api/auth/me` uma vez por carga; 401 volta a `#/login`. "Sair" chama `/api/auth/logout`.
+- **Plano B:** com 502/504 no login, só o e-mail de `DEMO_EMAIL` (devolvido pela ponte) entra, numa sessão
+  marcada `ww-offline`, com aviso no console. Com essa sessão, um 502/504 no `/me` não derruba; um 401 sempre derruba.
+- **Cidade → região:** a cidade do usuário vira o município inicial (`valeMunicipios` em `data/content.js`); a
+  região é sempre `vale-do-taquari`.
+- **Cadastro (`#/cadastro`):** mesmo cartão do login, com nome, e-mail, senha e cidade (select local). Com tudo
+  válido mostra, com `role="status"`, "O cadastro está desativado nesta demonstração. Entre com a conta de
+  demonstração." e um link para o login. Não chama `/api/auth/register`.

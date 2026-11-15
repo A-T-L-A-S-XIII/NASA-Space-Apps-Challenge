@@ -12,7 +12,7 @@ from app.routers import alerts, api, auth, climate, explain, forecast, passes, p
 from app.schemas import Health
 from app.services.store import DatasetMissing
 from app.services.alerts import ensure_demo_alerts
-from app.services.users import ensure_seed_gov
+from app.services.users import ensure_seed_gov, ensure_seed_user
 
 
 @asynccontextmanager
@@ -21,6 +21,9 @@ async def lifespan(app: FastAPI):
     with SessionLocal() as db:
         ensure_seed_gov(db, settings.seed_gov_name, settings.seed_gov_email, settings.seed_gov_password)
         ensure_demo_alerts(db, settings.seed_gov_email)
+        # Conta de demonstração: a única que o frontend usa
+        ensure_seed_user(db, settings.demo_user_name, settings.demo_user_email, settings.demo_user_password,
+                         role="cidadao", city=settings.demo_user_city)
     yield
 
 

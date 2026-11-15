@@ -83,3 +83,25 @@ def test_governo_semente_cria_outro_governo(client):
     r = client.post("/api/auth/gov-users", json=body, headers=auth_header(token))
     assert r.status_code == 201
     assert r.json()["role"] == "governo"
+
+
+def test_conta_demo_criada_no_startup(client):
+    r = login(client, "demo@teste.dev", "senha-demo-123")
+    assert r.status_code == 200
+    user = r.json()["user"]
+    assert user["role"] == "cidadao"
+    assert user["name"] == "Demo Teste"
+    assert user["city"] == "Estrela"
+
+
+def test_conta_demo_nao_duplica(client):
+    from app.config import settings
+    from app.db import SessionLocal, User
+    from app.services.users import ensure_seed_user
+    from sqlalchemy import func, select
+
+    with SessionLocal() as db:
+        ensure_seed_user(db, "Outro", settings.demo_user_email, "outra-senha", role="cidadao")
+        assert db.scalar(select(func.count()).select_from(User).where(User.email == settings.demo_user_email)) == 1
+    # a senha original continua valendo
+    assert login(client, "demo@teste.dev", "senha-demo-123").status_code == 200
