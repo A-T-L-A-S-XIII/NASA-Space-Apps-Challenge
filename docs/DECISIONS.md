@@ -36,6 +36,15 @@ Status: **decided** (team), **to confirm** (decided with a detail still open), *
 | D-11 | Backend: **keep Hugo's work and fit it into the project backend**. His authentication (SQLite, JWT, seed government account), regions and ASF search were brought from branch `backend` (up to `cf89048`) into `backend/` alongside the radar routes; Hugo continues on the project branch. | Reopens D-04 (demo login only, no personal data on the server) and the "static, no server" part of D-08. |
 | D-05 | Name: **Water Waltz** (final). | Renamed in README, NOTICE, LICENSE, app title. |
 
+## Answers of 2026-11-15, second round (coordinator)
+
+| ID | Decision | Effect |
+|---|---|---|
+| D-12 | Video: up to 1 min. Slides: no limit. | Confirms D-08; checklist updated. |
+| D-13 | Login: demo only ("Continue as demo user"). Public site: static, no server. | Confirms D-04 and the static part of D-08 over D-11. Hugo's authentication stays in `backend/` but is not used by the public demo. |
+| D-15 | AI use is declared: AI tools were used as coding assistants; all code was reviewed, tested and integrated by the team. | README keeps its "AI assistance" section; the submission form states it too. The checklist scan that required no AI traces was removed. |
+| D-14 | Data: only NASA and partner space agencies (e.g. ESA for Sentinel-1). | Reopens D-09 and D-10: OpenStreetMap, IBGE, SGB, ANA, DNIT, DAER-RS, Defesa Civil and Copernicus EMS need a NASA/partner replacement or are removed. |
+
 ## Track A findings (2026-11-15, 02:52–03:10 BRT)
 
 - NISAR coverage **confirmed** by a CMR query (`pipeline/query.py`, results in `data/nisar_granules.json`): 21 GCOV granules since 2025, all fully covering the AOI, in two stacks repeating every 12 days:

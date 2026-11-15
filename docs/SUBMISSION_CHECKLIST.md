@@ -10,14 +10,8 @@ Deadline: 15 Nov 2026, 23:59 (Local Event time zone — to confirm, D-07). Targe
 | Public demo works without login | ☐ |
 | Demo works offline on another computer | ☐ |
 | README complete (all sections in docs) | ☐ |
-| AI-trace scan returns nothing (see below) | ☐ |
-| Video ≤ 30 s or ≤ 7 slides | ☐ |
+| AI use declared: README "AI assistance" section and the submission form | ☐ |
+| Video ≤ 1 min (slides: no limit) | ☐ |
 | All links open | ☐ |
 
-Scan (must print nothing). The bracketed letters keep this file from matching itself:
-
-```bash
-P="cl[a]ude|anthr[o]pic|cod[e]x|open[a]i|chatg[p]t|copil[o]t|co-authored-[b]y|generated [w]ith"
-git grep -n -i -E "$P"
-git log --format=%B | grep -i -E "$P"
-```
+AI tools were used as coding assistants. This is declared, not hidden (D-15).
