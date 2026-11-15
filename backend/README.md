@@ -79,6 +79,7 @@ Rode o script de novo perto do pitch para os dados ficarem atualizados.
 | GET | `/api/regions/{id}` | Bbox, centro, cidades e traçado do rio | fixo |
 | GET | `/api/regions/{id}/status` | Resumo para o card principal: água do mês, ENSO e última cena NISAR | demo + ao vivo |
 | GET | `/api/regions/{id}/nisar-processed` | Cenas NISAR já processadas em mancha real (granule, data, trilha, limiar, área) | **NISAR real** |
+| GET | `/api/regions/{id}/recurrence` | "Recorrente ou pontual?": manchas por classe, classe de cada cidade e área alagada por mês desde 2015 (`geometry=false` para só os números) | **Sentinel-1 real** |
 | GET | `/api/regions/{id}/scenes` | Cenas NISAR do ASF (`start`, `end`, `product=GCOV`, `limit=25`) | **ao vivo** |
 | GET | `/api/regions/{id}/timeline` | Série mensal: área, anomalia, status, ONI e fase ENSO (`start=2022-01`, `end`) | demo + ONI ao vivo |
 | GET | `/api/regions/{id}/water-mask` | GeoJSON da mancha d'água (`date=AAAA-MM`), área e cidades atingidas | demo |
@@ -106,6 +107,7 @@ estão em `frontend-api.ts`.
 | **ASF DAAC (NISAR)**, ao vivo | `/scenes`, `/status`, `/compare` | Catálogo público, sem login. Cache de 30 min. Se o ASF falhar: snapshot com `live: false` e `snapshot_date`; sem snapshot, lista vazia e `error`. |
 | **NOAA CPC (ONI)**, ao vivo | `/climate/enso`, `/timeline`, `/status` | Arquivo `oni.ascii.txt`. Cache de 6 h. Se a NOAA falhar: último cache com `live: false`, senão o snapshot, senão série vazia com `error`. |
 | **DemoProvider**, demo | `/timeline`, `/water-mask`, `/compare`, `/status` | Valores ilustrativos e determinísticos com `"source": "demo"` e `"note"`. Seguem a cronologia real (estiagem de 2022 ao início de 2023; enchentes de set/2023, nov/2023 e mai/2024), mas **não são medições**: o NISAR só entrou em operação depois de 2025. |
+| **Sentinel-1**, processado antes | `/recurrence` | Arquivo gerado por `scripts/process_sentinel1.py` no Earth Engine, com `"source": "sentinel-1"`. Sem o arquivo, 404. |
 | **Radar processado** | `/api/timeline`, `/api/layers`... | Arquivos gerados antes pelo pipeline em `data/demo/`. Com `data/fixtures/`, as respostas vêm com `"fixture": true`. |
 
 Alertas e usuários ficam no SQLite. No startup, a API cria a conta governo semente e **2 alertas
@@ -197,6 +199,47 @@ Cuidados:
   área dela com a de um mês demo não faz sentido.
 - Em área urbana, o radar enxerga menos água do que existe. Vegetação alagada pode passar despercebida em HH.
 - Só compare datas da **mesma trilha e da mesma versão** do produto (decisão T-01).
+
+## Recorrência do Sentinel-1 ("recorrente ou pontual?")
+
+O NISAR só tem cenas do Taquari desde 17/06/2026, pouco para falar em recorrência. O histórico vem
+do **Sentinel-1** (banda C, desde 2014), processado uma vez no Google Earth Engine, fora da API:
+
+```bash
+pip install -r scripts/requirements-sentinel1.txt   # earthengine-api, rasterio
+earthengine authenticate                            # uma vez, abre o navegador
+# no .env: EE_PROJECT=<id do projeto do Google Cloud registrado no Earth Engine>
+python scripts/process_sentinel1.py --estimate      # órbitas e número de cenas
+python scripts/process_sentinel1.py                 # leva de 15 a 30 min
+```
+
+1. Cenas `COPERNICUS/S1_GRD` (IW, VV) de **uma órbita só** (a mais frequente: 24, descendente).
+2. Água em cada cena: VV abaixo de −18 dB, com mediana de 50 m contra o speckle e sem encostas acima
+   de 5° (a sombra do radar nos morros parece água).
+3. **Permanente** = água em pelo menos 50% das cenas (o leito do rio).
+4. Fora do leito, conta em quantos **meses diferentes** cada pixel alagou: **pontual** (1),
+   **voltou** (2 a 3) ou **recorrente** (4 ou mais).
+5. Baixa o raster de classes em 16 pedaços (o mapa inteiro de uma vez passa do limite do Earth Engine),
+   vetoriza e salva `app/data/sentinel1/{region_id}_recorrencia.geojson`, com a área alagada de cada mês.
+
+Na rota `/recurrence`, cada cidade recebe a classe mais forte que cobre pelo menos **10%** do círculo de
+1 km em volta do centro (o critério da mancha do mês é 30%; aqui é menor porque a recorrência costuma
+atingir só a parte baixa da cidade). Sem nada acima de 10%, a classe é `sem_registro`, que **não** quer
+dizer "nunca alagou".
+
+Resultado (órbita 24, 471 cenas de 2015-04-29 a 2026-11-10, 103 meses com passagem): pontual 45,3 km²,
+voltou 18,8 km², recorrente 53,4 km², permanente 19,4 km². Meses com mais área alagada fora do leito:
+2026-09 (81,5 km²), 2024-05 (34,8), 2018-10 (33,8), 2016-07 (33,1) e 2020-07 (29,5); 2023-09 teve 28,9.
+A mediana de um mês comum é 9,6 km² (o ruído de fundo: solo encharcado, superfícies lisas).
+
+Cuidados (é um indicador de recorrência, não um mapa oficial de risco):
+
+- **Enchente curta escapa.** O satélite passa a cada 12 dias (só o Sentinel-1A desde o fim de 2021) e as
+  cheias do Taquari sobem e descem em 2 ou 3 dias. No vale estreito de cima (Muçum, Encantado, Roca Sales)
+  o pico quase nunca é fotografado, e todas as cidades saem `sem_registro`.
+- **Cidade não aparece.** Entre prédios o radar volta forte (reflexão dupla) e a água não fica escura.
+- **Nem tudo que alaga é enchente.** Lavoura irrigada (arroz) e banhado no baixo Taquari podem cair em
+  `recorrente`.
 
 ## Próximos passos: trocar o DemoProvider por NISAR real
 

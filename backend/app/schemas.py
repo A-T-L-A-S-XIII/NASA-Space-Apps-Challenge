@@ -514,3 +514,50 @@ class NisarProcessed(BaseModel):
     region_id: str
     count: int
     scenes: list[NisarScene] = Field(description="Da mais recente para a mais antiga")
+
+
+RecurrenceClassName = Literal["pontual", "voltou", "recorrente", "permanente"]
+
+
+class RecurrenceClass(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    class_: RecurrenceClassName = Field(alias="class")
+    description: str
+    months_min: int | None = Field(description="Mínimo de meses alagados (vazio para permanente)")
+    months_max: int | None = Field(description="Máximo de meses alagados (vazio = sem limite)")
+    area_km2: float
+
+
+class CityRecurrence(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    city_id: str
+    name: str
+    class_: Literal["pontual", "voltou", "recorrente", "sem_registro"] = Field(
+        alias="class", description="Classe mais forte que cobre pelo menos 10% do círculo de 1 km da cidade. "
+                                   "sem_registro NÃO quer dizer que nunca alagou (o radar perde enchentes curtas "
+                                   "e não vê água entre prédios)")
+    flooded_share: float = Field(description="Fração do círculo de 1 km que alagou ao menos uma vez (fora do leito)")
+
+
+class MonthlyFlood(BaseModel):
+    month: str = Field(description="AAAA-MM")
+    images: int = Field(description="Passagens do Sentinel-1 no mês")
+    flooded_km2: float = Field(description="Área alagada fora do leito do rio no mês")
+
+
+class Recurrence(BaseModel):
+    region_id: str
+    source: Literal["sentinel-1"]
+    note: str
+    period_start: str
+    period_end: str
+    images: int
+    relative_orbit: int
+    orbit_pass: str | None
+    threshold_db: float
+    classes: list[RecurrenceClass]
+    cities: list[CityRecurrence]
+    monthly: list[MonthlyFlood] = Field(description="Só os meses com passagem, do mais antigo ao mais recente")
+    geojson: FeatureCollection | None = Field(description="Manchas por classe; vazio com geometry=false")

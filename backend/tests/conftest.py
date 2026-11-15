@@ -21,6 +21,7 @@ os.environ["TFW_DATA_DIR"] = str(FIXTURES)
 os.environ["OFFLINE_MODE"] = "false"
 os.environ["SNAPSHOT_DIR"] = str(REPO / "backend" / "tests" / "_sem_snapshots")
 os.environ["NISAR_DIR"] = str(REPO / "backend" / "tests" / "_sem_nisar")
+os.environ["SENTINEL1_DIR"] = str(REPO / "backend" / "tests" / "_sem_sentinel1")
 
 from app.db import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402

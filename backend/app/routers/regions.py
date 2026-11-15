@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app import providers
 from app.data.regions import REGIONS, bbox_to_wkt
 from app.routers.deps import region_or_404
 from app.providers.nisar import processed_scenes
-from app.schemas import NisarProcessed, Region, RegionStatus, ScenesResponse
-from app.services import asf
+from app.schemas import NisarProcessed, Recurrence, Region, RegionStatus, ScenesResponse
+from app.services import asf, sentinel1
 from app.services.status import region_status
 
 router = APIRouter(prefix="/api/regions", tags=["Regiões"])
@@ -66,3 +66,32 @@ def nisar_processed(region: dict = Depends(region_or_404)):
     scenes = [{k: v for k, v in s.items() if k != "geometry"} for s in processed_scenes(region["id"])]
     scenes.reverse()
     return {"region_id": region["id"], "count": len(scenes), "scenes": scenes}
+
+
+@router.get("/{region_id}/recurrence", response_model=Recurrence, response_model_by_alias=True,
+            summary="Recorrência de alagamento (histórico Sentinel-1)",
+            responses={404: {"description": "Região não encontrada ou histórico ainda não processado"}})
+def recurrence(region: dict = Depends(region_or_404),
+               geometry: bool = Query(True, description="false devolve só os números, sem as manchas")):
+    """Responde "recorrente ou pontual?": onde a água voltou várias vezes desde 2015 (arquivo gerado por
+    `scripts/process_sentinel1.py`), a classe de cada cidade e a área alagada de cada mês."""
+    data = sentinel1.load_recurrence(region["id"])
+    if data is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Histórico Sentinel-1 ainda não processado para esta região")
+    meta = data["metadata"]
+    return {
+        "region_id": region["id"],
+        "source": "sentinel-1",
+        "note": sentinel1.recurrence_note(meta),
+        "period_start": meta["period"]["start"],
+        "period_end": meta["period"]["end"],
+        "images": meta["images"],
+        "relative_orbit": meta["relative_orbit"],
+        "orbit_pass": meta.get("orbit_pass"),
+        "threshold_db": meta["threshold_db"],
+        "classes": [f["properties"] for f in data["features"]],
+        "cities": sentinel1.city_recurrence(data, region),
+        "monthly": data["monthly"],
+        "geojson": {"type": "FeatureCollection", "features": data["features"]} if geometry else None,
+    }

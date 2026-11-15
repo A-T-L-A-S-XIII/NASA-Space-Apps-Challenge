@@ -42,6 +42,8 @@ class Settings(BaseSettings):
 
     # Manchas reais do NISAR geradas por scripts/process_nisar.py
     nisar_dir: str = str(Path(__file__).resolve().parent / "data" / "nisar")
+    # Recorrência do histórico Sentinel-1 gerada por scripts/process_sentinel1.py
+    sentinel1_dir: str = str(Path(__file__).resolve().parent / "data" / "sentinel1")
 
     @field_validator("cors_origins", mode="before")
     @classmethod

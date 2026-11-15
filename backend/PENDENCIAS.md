@@ -4,15 +4,11 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 
 ## Dados
 
-### Histórico do Sentinel-1 (não iniciado)
+### Histórico do Sentinel-1 (feito, falta usar no frontend)
 
-- [ ] Obter o histórico de radar Sentinel-1 do Vale do Taquari (desde 2014).
-- **Por quê:** o objetivo do Water Waltz é a pessoa entender se o problema é **recorrente ou pontual**. As cenas NISAR da região só existem desde 17/06/2026, pouco para falar em recorrência.
-- **Divisão entre satélites:**
-  - **Sentinel-1 (banda C):** a memória longa. Com mais de 10 anos de imagens, conta quantas vezes cada ponto ficou alagado.
-  - **NISAR (banda L):** o detalhe recente. Enxerga água embaixo da vegetação, umidade do solo e movimento do terreno.
-- **Como:** processar **fora da API**, uma vez só (ex.: Google Earth Engine), e guardar o resultado pronto em `app/data/`, como um mapa de "% do tempo com água". A API só serve o resultado e indica a fonte.
-- **Em aberto:** quem processa e com qual conta (Earth Engine ou NASA Earthdata).
+- [x] Script `scripts/process_sentinel1.py` (Earth Engine) e rota `GET /api/regions/{id}/recurrence`.
+- [ ] Mostrar no frontend: camada de classes no mapa, classe de cada cidade e a série mensal.
+- [ ] Conferir o resultado contra as enchentes conhecidas (set/2023, nov/2023, mai/2024) e ajustar o limiar se precisar.
 
 ### Servir o NISAR já processado (`Fotos/nisar_taquari_50/`)
 
@@ -24,12 +20,13 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 
 ### Rotas de secas e enchentes
 
-- [ ] Definir e criar as rotas que respondem "recorrente ou pontual?", juntando o histórico do Sentinel-1 e o detalhe do NISAR.
-- Depende dos dois itens acima. Todo dado simulado deve levar `"source": "demo"`.
+- [x] O "recorrente ou pontual?" do histórico já sai em `/recurrence`.
+- [ ] Juntar o detalhe do NISAR (as 19 passagens) na mesma resposta, se der tempo. Todo dado simulado deve levar `"source": "demo"`.
 
 ## Segurança (antes de publicar a API)
 
-- [ ] Trocar `JWT_SECRET` e `SEED_GOV_PASSWORD` no `.env` e nas variáveis do Render/Railway. Hoje são os valores de exemplo.
+- [x] Trocar `JWT_SECRET` e `SEED_GOV_PASSWORD` no `.env` local.
+- [ ] Cadastrar `JWT_SECRET`, `SEED_GOV_EMAIL`, `SEED_GOV_PASSWORD` e `CORS_ORIGINS` no Railway ao publicar.
 - [ ] Banco persistente no deploy: hoje o SQLite do container some a cada deploy (contas e alertas).
 - [ ] Rodar uma revisão de segurança (login, tokens, CORS).
 
