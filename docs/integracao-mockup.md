@@ -112,8 +112,12 @@ O PR saiu de `ed8a7ea` e, para chegar ao estado dele, **apagaria** do main: aler
   `POST /api/auth/logout` apaga o cookie. Com o FastAPI inacessível a ponte devolve 502 (rede) ou 504 (tempo).
   As demais rotas `/api/*` recebem o `Authorization` do cookie em `frontend/middleware.js`.
 - **Login (`js/login.js`):** valida os campos e chama a ponte. 401 → "E-mail ou senha incorretos." na área de
-  erro, com foco nela. Abaixo do botão: "Protótipo de demonstração. Use a conta da equipe." e "Criar conta".
-  Não há mais "Entrar como visitante".
+  erro, com foco nela. Abaixo do botão: "Entrar como visitante", "Protótipo de demonstração. Use a conta da
+  equipe ou entre como visitante." e "Criar conta".
+- **Visitante (`WW.api.visitante()`):** entra sem conta e sem senha, para quem recebe o link testar. A sessão
+  fica só no `sessionStorage` (`ww-user` = "Visitante", cidade Lajeado, e `ww-guest`), sem cookie nem token, e o
+  `/api/auth/me` não é chamado para ela. Funciona porque as rotas de dados usadas pelas telas são públicas; as que
+  exigem conta (`/api/me/*`, alertas, `/api/gov/*`) não são usadas pelo frontend. "Sair" apaga a marca.
 - **Sessão (`js/api.js`, `js/app.js`):** o `sessionStorage` guarda só nome e cidade (`ww-user`). As telas
   internas chamam `/api/auth/me` uma vez por carga; 401 volta a `#/login`. "Sair" chama `/api/auth/logout`.
 - **Plano B:** com 502/504 no login, só o e-mail de `DEMO_EMAIL` (devolvido pela ponte) entra, numa sessão

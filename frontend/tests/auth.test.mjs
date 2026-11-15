@@ -178,8 +178,47 @@ test("cadastro: não chama /register e mostra o aviso com role=status", () => {
   assert.doesNotMatch(js, /auth\/register/);
   assert.match(js, /role="status"/);
   assert.match(js, /O cadastro está desativado nesta demonstração\. Entre com a conta de demonstração\./);
-  assert.match(js, /Protótipo de demonstração\. Use a conta da equipe\./);
-  assert.doesNotMatch(js, /guestBtn|visitante/);
+  assert.match(js, /Protótipo de demonstração\. Use a conta da equipe ou entre como visitante\./);
+});
+
+/* ------------------------------------------------- visitante */
+test("visitante: entra sem chamar o servidor e o me() não derruba a sessão", async () => {
+  const { api, store, pedidos } = loadApi(async () => resp(401, { detail: "Sessão expirada. Entre de novo." }));
+  const s = api.visitante();
+  assert.equal(s.guest, true);
+  assert.equal(s.offline, false);
+  assert.equal(s.user.name, "Visitante");
+  assert.equal(store.get("ww-guest"), "1");
+  await api.me();
+  assert.equal(pedidos.length, 0);
+});
+
+test("visitante: sobrevive a recarregar a página (nova carga do api.js)", async () => {
+  const { api, store, pedidos } = loadApi(async () => resp(401, { detail: "Sessão expirada." }));
+  store.set("ww-user", JSON.stringify({ name: "Visitante", city: "Lajeado" }));
+  store.set("ww-guest", "1");
+  const s = await api.me();
+  assert.equal(s.guest, true);
+  assert.equal(pedidos.length, 0);
+});
+
+test("visitante: sair limpa a marca; login de verdade também", async () => {
+  const a = loadApi(async () => resp(200, { ok: true }));
+  a.api.visitante();
+  await a.api.logout();
+  assert.equal(a.store.size, 0);
+
+  const b = loadApi(async () => resp(200, { user: { name: "Demo", city: "Estrela" } }));
+  b.api.visitante();
+  const s = await b.api.login("demo@waterwaltz.dev", "x");
+  assert.equal(s.guest, undefined);
+  assert.equal(b.store.has("ww-guest"), false);
+});
+
+test("login.js: botão de visitante no cartão de login", () => {
+  const js = read("../public/js/login.js");
+  assert.match(js, /id="guestBtn"[^>]*>Entrar como visitante</);
+  assert.match(js, /WW\.api\.visitante\(\)/);
 });
 
 test("nenhuma senha da conta demo no frontend", () => {
