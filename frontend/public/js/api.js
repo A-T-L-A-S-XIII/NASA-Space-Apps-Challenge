@@ -354,15 +354,16 @@
   }
 
   /* ---------------------------------------------------------------- sessão */
-  const USER = "ww-user", OFFLINE = "ww-offline";
+  const USER = "ww-user", OFFLINE = "ww-offline", GUEST = "ww-guest";
   let sessao = null; // promessa de { user, offline }: /api/auth/me roda uma vez por carga da página
 
   function user() { try { return JSON.parse(ss.get(USER) || "null"); } catch (e) { return null; } }
-  function limpar() { ss.del(USER); ss.del(OFFLINE); sessao = null; }
-  function guardar(u, offline) {
+  function limpar() { ss.del(USER); ss.del(OFFLINE); ss.del(GUEST); sessao = null; }
+  function guardar(u, offline, guest = false) {
     ss.set(USER, JSON.stringify(u));
     if (offline) ss.set(OFFLINE, "1"); else ss.del(OFFLINE);
-    const s = { user: u, offline };
+    if (guest) ss.set(GUEST, "1"); else ss.del(GUEST);
+    const s = guest ? { user: u, offline, guest } : { user: u, offline };
     sessao = Promise.resolve(s);
     return s;
   }
@@ -384,9 +385,16 @@
     }
   }
 
-  /* Valida a sessão do cookie. 401 sempre derruba; 502/504 só mantém uma sessão offline. */
+  /* Visitante: entra sem conta e sem senha. A sessão fica só no navegador (sem cookie nem token);
+     as rotas de dados que as telas usam são públicas. */
+  const VISITANTE = { name: "Visitante", city: "Lajeado" };
+  function visitante() { return guardar({ ...VISITANTE }, false, true); }
+
+  /* Valida a sessão do cookie. 401 sempre derruba; 502/504 só mantém uma sessão offline.
+     Visitante não tem cookie: a sessão dele não passa pelo servidor. */
   function me() {
     if (sessao) return sessao;
+    if (ss.get(GUEST) === "1" && user()) return (sessao = Promise.resolve(guardar(user(), false, true)));
     sessao = request("/api/auth/me").then((res) => guardar(res.user, false), (e) => {
       if (semServidor(e) && ss.get(OFFLINE) === "1" && user()) {
         console.warn(`[WW.api] /api/auth/me falhou (${e.message}). Sessão de demonstração offline.`);
@@ -412,6 +420,7 @@
     enso,
     explicacao,
     login,
+    visitante,
     me,
     logout,
     user,
