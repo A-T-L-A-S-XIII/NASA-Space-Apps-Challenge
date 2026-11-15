@@ -1,0 +1,47 @@
+[
+  {
+    "ur": "NISAR_L2_PR_GCOV_024_031_A_163_2005_DHDH_A_20260628T093046_20260628T093121_P05023_N_F_J_001",
+    "data": "2026-06-28",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  },
+  {
+    "ur": "NISAR_L2_PR_GCOV_025_031_A_163_2005_DHDH_A_20260710T093046_20260710T093120_P05023_N_F_J_001",
+    "data": "2026-07-10",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  },
+  {
+    "ur": "NISAR_L2_PR_GCOV_026_031_A_163_2005_SHSH_A_20260722T093045_20260722T093120_P05023_N_F_J_001",
+    "data": "2026-07-22",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  },
+  {
+    "ur": "NISAR_L2_PR_GCOV_028_031_A_163_2005_DHDH_A_20260815T093044_20260815T093118_P05023_N_F_J_001",
+    "data": "2026-08-15",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  },
+  {
+    "ur": "NISAR_L2_PR_GCOV_029_031_A_163_2005_DHDH_A_20260827T093043_20260827T093118_P05023_N_F_J_001",
+    "data": "2026-08-27",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  },
+  {
+    "ur": "NISAR_L2_PR_GCOV_030_031_A_163_2005_DHDH_A_20260908T093043_20260908T093118_P05023_N_F_J_001",
+    "data": "2026-09-08",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  },
+  {
+    "ur": "NISAR_L2_PR_GCOV_031_031_A_163_2005_DHDH_A_20260920T093043_20260920T093118_P05023_F_F_J_001",
+    "data": "2026-09-20",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  },
+  {
+    "ur": "NISAR_L2_PR_GCOV_032_031_A_163_2005_DHDH_A_20261002T093043_20261002T093118_P05023_N_F_J_001",
+    "data": "2026-10-02",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  },
+  {
+    "ur": "NISAR_L2_PR_GCOV_033_031_A_163_2005_DHDH_A_20261014T093043_20261014T093118_P05023_N_F_J_001",
+    "data": "2026-10-14",
+    "motivo": "ValueError: cobertura baixa (0%)"
+  }
+]
