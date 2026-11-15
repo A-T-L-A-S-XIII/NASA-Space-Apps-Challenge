@@ -42,15 +42,35 @@ def test_every_statement_has_source_and_basis(client, ds):
             assert s["source"] and s["basis"] in ("radar", "external", "inference")
 
 
-def test_access_vocabulary(client):
-    # Near the DEV FIXTURE interruption point.
-    r = client.get("/api/exposure", params={"lat": -29.401, "lon": -51.931}).json()
-    assert r["access"]["status"] == "interruption_confirmed"
-    assert r["access"]["label"].startswith("Interruption confirmed by ")
-    # Far from any road: nothing demonstrated.
+def _town(client, ds, town_id):
+    loc = next(l for l in ds.localities["items"] if l["locality_id"] == town_id)
+    return client.get("/api/exposure", params={"lat": loc["lat"], "lon": loc["lon"]}).json()
+
+
+@pytest.mark.parametrize("town_id, status, label", [
+    ("test-town-a", "section_requiring_verification", "Section requiring verification"),
+    ("test-town-b", "no_path_under_modeled_conditions", "No path under modeled conditions"),
+    ("test-town-c", "isolation_not_demonstrated", "Isolation not demonstrated"),
+    ("test-town-d", "interruption_confirmed", "Interruption confirmed by DEV FIXTURE bulletin at "),
+])
+def test_access_rules(client, ds, town_id, status, label):
+    a = _town(client, ds, town_id)["access"]
+    assert a["status"] == status
+    assert a["label"].startswith(label)
+    assert a["exits"] >= 1
+
+
+def test_town_is_not_on_water(client, ds):
+    # The access cases are only meaningful if the towns themselves are dry.
+    for t in ("test-town-a", "test-town-b", "test-town-c", "test-town-d"):
+        assert _town(client, ds, t)["latest"]["state"] == "no_candidate_water"
+
+
+def test_no_exits_gives_coverage_warning(client):
+    # Far from every test road.
     r = client.get("/api/exposure", params={"lat": -29.58, "lon": -52.08}).json()
     assert r["access"]["status"] == "isolation_not_demonstrated"
-    assert r["access"]["label"] == "Isolation not demonstrated"
+    assert r["access"]["exits"] == 0 and r["access"]["coverage_warning"]
 
 
 def test_no_valid_observation_is_not_zero(client, ds):

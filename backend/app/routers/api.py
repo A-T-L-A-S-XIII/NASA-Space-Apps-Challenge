@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 
 from ..schemas import Exposure, LayerSet, Localities, Stats, Timeline
 from ..services.downloads import stats_csv, stats_geojson
-from ..services.exposure import compute_exposure
+from ..services.exposure import compute_exposure, flagged_road_ids
 from ..services.store import REPO, Dataset, get_dataset
 
 router = APIRouter(prefix="/api")
@@ -31,6 +31,17 @@ def grid(ds: Dataset = Depends(get_dataset)):
 @router.get("/access")
 def access(ds: Dataset = Depends(get_dataset)):
     return ds.access or {"type": "FeatureCollection", "features": []}
+
+
+@router.get("/road-flags")
+def road_flags(ds: Dataset = Depends(get_dataset)):
+    """date_id -> ids of road segments crossing candidate water on that date."""
+    return {e["date_id"]: flagged_road_ids(ds, e["date_id"]) for e in ds.timeline["entries"]}
+
+
+@router.get("/bulletins")
+def bulletins(ds: Dataset = Depends(get_dataset)):
+    return ds.bulletins
 
 
 @router.get("/layers/{date_id}", response_model=LayerSet)

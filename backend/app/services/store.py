@@ -35,6 +35,9 @@ class Dataset:
         self.stats = self._json("stats.json")
         self.localities = self._json("localities.json")
         self.access = self._json("access.geojson") if (root / "access.geojson").is_file() else None
+        # Optional, hand-entered official bulletins (D-14): source, time, timezone, segment_id.
+        self.bulletins: list[dict] = (self._json("bulletins.json")
+                                      if (root / "bulletins.json").is_file() else [])
         g = self._json("grid.json")
         self.bounds: list[float] = g["bounds"]
         self.width: int = g["width"]
