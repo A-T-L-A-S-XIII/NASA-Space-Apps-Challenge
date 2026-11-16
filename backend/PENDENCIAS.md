@@ -25,8 +25,8 @@ O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
 
 ## Escopo: conta governo e alertas (aguardando decisão da equipe)
 
-O app tem uma conta só, a de demonstração (`DEMO_USER_*`), e não mostra alertas. O backend ainda tem o que
-sobrou da versão com governo. O frontend não usa nada disso; nada foi removido até a equipe decidir.
+O frontend não usa a conta governo nem os alertas (conferido por grep em `frontend/` em 2026-11-15); o código
+fica no backend como base para a visão futura e não foi removido para a entrega final.
 
 - [ ] Decidir se remove ou mantém:
   - a conta governo semente (`ensure_seed_gov`, `SEED_GOV_*` no `.env` e no `config.py`);
@@ -40,18 +40,28 @@ sobrou da versão com governo. O frontend não usa nada disso; nada foi removido
 ## Segurança (antes de publicar a API)
 
 - [x] Trocar `JWT_SECRET` e `SEED_GOV_PASSWORD` no `.env` local.
-- [ ] Cadastrar `JWT_SECRET`, `SEED_GOV_EMAIL`, `SEED_GOV_PASSWORD` e `CORS_ORIGINS` no Railway ao publicar.
-- [ ] Cadastrar a conta de demonstração no Railway (`DEMO_USER_NAME`, `DEMO_USER_EMAIL`, `DEMO_USER_PASSWORD`,
-  `DEMO_USER_CITY`), com senha forte. No Next (Vercel): `API_URL`, `DEMO_EMAIL` (igual a `DEMO_USER_EMAIL`) e
-  `JWT_EXPIRE_MINUTES` (igual ao do backend).
+- [x] Revisão de segurança (login, tokens, CORS), com testes em `tests/test_security.py`: 401 para token
+  ausente, malformado, com outra assinatura, expirado e com alg `none`; CORS sem `*` e sem
+  `Access-Control-Allow-Origin` para origem desconhecida; login com a mesma mensagem para e-mail ou senha
+  errados; senha em bcrypt.
+- [x] No Render (variável `RENDER`), a API não sobe com `JWT_SECRET`, `DEMO_USER_PASSWORD` ou `SEED_GOV_PASSWORD`
+  vazio ou com o valor de exemplo.
+- [x] Varredura de segredos no código, nos testes e no histórico do git: nada real. Foi por padrão de texto
+  (gitleaks e trufflehog não estavam instalados); `.env` e `*.db` estão no `.gitignore`.
+- [ ] Conferir no painel do Render: `JWT_SECRET` e `SEED_GOV_PASSWORD` sorteados, `DEMO_USER_PASSWORD` forte e
+  diferente do de teste, `CORS_ORIGINS` com a URL da Vercel sem barra no fim. No Next (Vercel): `API_URL`,
+  `DEMO_EMAIL` (igual a `DEMO_USER_EMAIL`) e `JWT_EXPIRE_MINUTES` (igual ao do backend).
 - [ ] Banco persistente no deploy: hoje o SQLite do container some a cada deploy (contas e alertas).
-- [ ] Rodar uma revisão de segurança (login, tokens, CORS).
+- [ ] Rodar gitleaks ou trufflehog no histórico quando houver tempo de instalar.
 
 ## Ajustes pequenos
 
-- [ ] O e-mail da conta governo inicial (`SEED_GOV_EMAIL`) não passa pelo validador. Com domínio reservado (ex.: `.test`), a conta é criada mas não consegue fazer login.
-- [ ] `data_maturity` fica `null` para cenas da coleção `NISAR_L2_GCOV_V1`, porque o ASF não diz a maturidade.
+- [x] `pytest` passa a partir de uma instalação limpa (`pip install -r requirements.txt`).
+- [x] `SEED_GOV_EMAIL` e `DEMO_USER_EMAIL` passam pela mesma validação do login (`EmailStr`) no `config.py`: um
+  domínio reservado (`.test`, `.local`) é recusado ao subir, em vez de criar uma conta sem login.
+- [x] `data_maturity` sai `"validated"` para a coleção `NISAR_L2_GCOV_V1` (no CMR, "NISAR Validated ...").
 - [ ] Trocar `httpx` por `httpx2` nos testes (aviso de que o `httpx` está obsoleto no TestClient do Starlette).
+- [ ] Conferir se `frontend/public/data/fallback/` bate com o que a API ao vivo devolve (fora do escopo do backend).
 
 ## Repositório
 
@@ -59,5 +69,6 @@ sobrou da versão com governo. O frontend não usa nada disso; nada foi removido
 - [x] Branch `integracao-mockup` (login pela ponte do Next, conta demo, cadastro desativado): mergeada no PR #18.
 - [x] PR #10 (branch `backend` → `main`) e PRs #11 a #15 mergeados.
 - [x] PRs #16 e #17 fechados: o mockup do #17 entrou pelo #18.
+- [x] Conteúdo do PR #21 (`validate_demo.py` e lista de pendências) trazido para a branch `final/hugo-backend`.
 - [x] Branch `teste-agente` apagada.
 - [ ] Apagar a branch `nisar-import` (dividida nos PRs #11 a #15).
