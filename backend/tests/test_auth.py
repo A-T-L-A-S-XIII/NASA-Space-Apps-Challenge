@@ -105,3 +105,26 @@ def test_conta_demo_nao_duplica(client):
         assert db.scalar(select(func.count()).select_from(User).where(User.email == settings.demo_user_email)) == 1
     # a senha original continua valendo
     assert login(client, "demo@teste.dev", "senha-demo-123").status_code == 200
+
+
+def test_email_semente_passa_pela_validacao_do_login():
+    """Um e-mail que o login recusaria (domínio reservado) é barrado já na configuração."""
+    import pytest
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    for email in ["gov@waterwaltz.test", "gov@exemplo.local", "gov@localhost"]:
+        with pytest.raises(ValidationError, match="seed_gov_email"):
+            Settings(_env_file=None, seed_gov_email=email)
+        with pytest.raises(ValidationError, match="demo_user_email"):
+            Settings(_env_file=None, demo_user_email=email)
+    assert Settings(_env_file=None, seed_gov_email="governo@waterwaltz.dev").seed_gov_email == "governo@waterwaltz.dev"
+
+
+def test_conta_governo_semente_consegue_login(client):
+    from app.config import settings
+
+    r = login(client, settings.seed_gov_email, "senha-gov-123")
+    assert r.status_code == 200
+    assert r.json()["user"]["email"] == settings.seed_gov_email

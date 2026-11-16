@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-from pydantic import field_validator
+from pydantic import EmailStr, field_validator
 from typing import Annotated
 from pathlib import Path
 import os
@@ -21,14 +21,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
 
-    # Conta governo criada no startup se ainda não existir
+    # Conta governo criada no startup se ainda não existir. Os e-mails das contas semente passam pela mesma
+    # validação do login (EmailStr): um domínio reservado, como .test ou .local, criaria uma conta sem login
     seed_gov_name: str = "Governo RS"
-    seed_gov_email: str = "governo@waterwaltz.dev"
+    seed_gov_email: EmailStr = "governo@waterwaltz.dev"
     seed_gov_password: str = "troque-esta-senha"
 
     # Conta de demonstração (cidadão) criada no startup se ainda não existir: a única que o frontend usa
     demo_user_name: str = "Conta de demonstração"
-    demo_user_email: str = "demo@waterwaltz.dev"
+    demo_user_email: EmailStr = "demo@waterwaltz.dev"
     demo_user_password: str = "troque-esta-senha"
     demo_user_city: str = "Lajeado"  # uma das cidades do Vale do Taquari: o app abre nela
 
