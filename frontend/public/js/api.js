@@ -237,10 +237,64 @@
     };
   }
 
+  /* A Open-Meteo limita pedidos por IP, e o IP de saída do Render é compartilhado (429). Se a API vier sem
+     dias, o navegador consulta a Open-Meteo direto, com os mesmos parâmetros e a mesma frase do backend
+     (services/forecast.py). Continua sendo previsão ao vivo, nunca uma cópia antiga. */
+  const OPEN_METEO = "https://api.open-meteo.com/v1/forecast";
+  const CENTRO = [-29.42, -51.93]; // center da região no backend, usado só se a API nem responder
+
+  function frasePrevisao(days) {
+    if (!days.length) return "Sem previsão para os próximos dias.";
+    const total = days.reduce((s, x) => s + (x.rain_mm || 0), 0);
+    if (total < 5) return `Pouca ou nenhuma chuva prevista nos próximos ${days.length} dias.`;
+    const pico = days.reduce((a, x) => ((x.rain_mm || 0) > (a.rain_mm || 0) ? x : a));
+    return `Chuva prevista de ${total.toFixed(1).replace(".", ",")} mm nos próximos ${days.length} dias, mais forte em ${dataBR(pico.date)}.`;
+  }
+
+  async function previsaoDireta(base, dias) {
+    const lat = base ? base.lat : CENTRO[0], lon = base ? base.lon : CENTRO[1];
+    const n = Math.min(16, Math.max(1, parseInt(dias, 10) || 7));
+    const q = new URLSearchParams({ latitude: lat, longitude: lon, timezone: "America/Sao_Paulo", forecast_days: n,
+      daily: "precipitation_sum,precipitation_probability_max,temperature_2m_max,temperature_2m_min" });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    let raw;
+    try {
+      const r = await fetch(`${OPEN_METEO}?${q}`, { headers: { Accept: "application/json" }, signal: ctrl.signal });
+      if (!r.ok) throw new Error(`Open-Meteo respondeu ${r.status}`);
+      raw = await r.json();
+    } finally {
+      clearTimeout(timer);
+    }
+    const dl = (raw && raw.daily) || {};
+    const col = (k) => dl[k] || [];
+    const days = (dl.time || []).map((date, i) => ({ date, rain_mm: col("precipitation_sum")[i] ?? null,
+      rain_probability_pct: col("precipitation_probability_max")[i] ?? null,
+      tmin_c: col("temperature_2m_min")[i] ?? null, tmax_c: col("temperature_2m_max")[i] ?? null }));
+    if (!days.length) throw new Error("Open-Meteo sem dias");
+    console.warn("[WW.api] A API veio sem previsão; consultando a Open-Meteo direto do navegador.");
+    return { source: "open-meteo", live: true, kind: "Previsão do tempo, não previsão de enchente.", lat, lon,
+      generated_at: new Date().toISOString(), total_rain_mm: r1(days.reduce((s, x) => s + (x.rain_mm || 0), 0)),
+      summary: frasePrevisao(days), days, error: null };
+  }
+
   async function previsao(dias) {
-    // Sem plano B: previsão antiga apresentada como atual enganaria quem lê
-    const d = await request(`${R}/forecast${dias ? `?days=${encodeURIComponent(dias)}` : ""}`);
-    if (!d.days.length) throw new ApiError(d.error || "Previsão indisponível agora.", 502);
+    // Sem plano B com arquivo: previsão antiga apresentada como atual enganaria quem lê
+    let d = null, falha = null;
+    try {
+      d = await request(`${R}/forecast${dias ? `?days=${encodeURIComponent(dias)}` : ""}`);
+    } catch (e) {
+      if (!foraDoAr(e)) throw e;
+      falha = e;
+    }
+    if (!d || !d.days.length) {
+      try {
+        d = await previsaoDireta(d, dias);
+      } catch (e) {
+        if (falha) throw falha;
+        throw new ApiError(d.error || "Previsão indisponível agora.", 502);
+      }
+    }
     return {
       fonte: "Open-Meteo (modelos meteorológicos globais)", tipo: d.kind, lat: d.lat, lon: d.lon,
       gerado_em: d.generated_at, chuva_total_mm: d.total_rain_mm, frase: d.summary,

@@ -1,6 +1,7 @@
-# Water Waltz · mockup navegável
+# Water Waltz · frontend
 
-Protótipo de interface para o desafio **Dancing with the SARs** (NASA Space Apps 2026), em HTML/CSS/JS estático e sem etapa de build.
+Interface do desafio **Dancing with the SARs** (NASA Space Apps 2026): telas em HTML/CSS/JS estático em
+`public/`, servidas por um Next.js que só faz a ponte de login e repassa `/api/*` para o FastAPI.
 As telas do **Vale do Taquari** usam os dados reais do backend (`backend/`). O globo e o drill-down de regiões continuam com valores de demonstração, marcados como "simulado".
 
 ## Como rodar
@@ -65,28 +66,25 @@ As funções do Vale seguem o briefing, desenhadas com o visual original deste m
 
 ## O que vem de onde
 
-| Recurso do briefing | Fonte | Situação |
-|---|---|---|
-| Login | `POST /api/auth/login` | **já existia** |
-| Mapa simplificado: rio, cidades, caixa da região | `GET /api/regions/vale-do-taquari` | **já existia** |
-| Malha dos municípios no mapa | `GET /api/nisar/municipios/geojson` | **novo** (IBGE, gerado por `pipeline/build_vale_municipios.py`) |
-| Frase sobre a situação de julho | `GET /api/nisar/resumo?mes=2026-07` | **novo**, calculado do `catalogo.json` |
-| Previsão | `GET /api/previsao` | **novo**, Open-Meteo (previsão do tempo, não de enchente) |
-| Busca por cidade | `GET /api/lugares?q=` | **novo**, municípios do IBGE (local) |
-| Busca por bairro | `GET /api/lugares?q=` | **novo**, Nominatim/OpenStreetMap (externo) |
-| Mapa de mudança (cheia/seca + radar) | `GET /api/nisar/geojson`, `/api/nisar/passagens/{n}/imagem/radar` | **novo**, lê `Fotos/nisar_taquari_50` |
-| Área alagada por passagem | `GET /api/nisar/passagens?mes=` | **novo** |
-| Área alagada por município | `GET /api/nisar/municipios?mes=` | **novo**, atribui cada polígono ao município pelo centro |
-| Vegetação alagada | `GET /api/nisar/vegetacao-alagada` → 501 | **sem dado**: as cenas são só HH; precisa de HV e reprocessamento |
-| Download GeoJSON | `/api/nisar/passagens/{n}/geojson?download=true`, `/api/nisar/geojson?download=true` | **novo** |
-| Exportação | `/api/nisar/exportar?formato=csv\|json` | **novo** |
-| Metadados | `GET /api/nisar/metadados` | **novo** |
-| Imagem de radar | `/api/nisar/passagens/{n}/imagem/{radar,slide}` | **novo** (arquivos do processamento) |
-| Imagem ilustrada | `assets/img/vale-ilustrado.webp` | ilustração feita a partir do radar de 23/07 |
-| Comparador antes × depois e linha do tempo | `/api/nisar/passagens` (todas as 19) + imagens de radar | **novo** |
-| Situação do município | `/api/lugares` + sedes de `/api/regions/vale-do-taquari` + polígonos de cheia | calculado no navegador a partir de dados do backend |
+Todas as rotas abaixo ficam em `R = /api/regions/vale-do-taquari`, salvo indicação. É o `public/js/api.js` que
+as chama (veja "Como rodar").
 
-As rotas antigas de radar (`/api/timeline`, `/api/stats`, `/api/layers`…) dependem de `data/demo/`, que ainda não existe. Por isso as telas do Vale usam as rotas `/api/nisar/*`.
+| Recurso | Rota do FastAPI | Origem do dado |
+|---|---|---|
+| Login | `POST /api/auth/login` (ponte do Next) | conta de demonstração |
+| Mapa simplificado: rio, cidades, caixa da região | `GET R` | região cadastrada no backend |
+| Malha dos municípios no mapa | `GET R/municipalities/geojson` | IBGE, gerada por `pipeline/build_vale_municipios.py` |
+| Passagens, frase do mês, comparador e linha do tempo | `GET R/passes` (as 19 passagens) | NISAR L2 GCOV, `Fotos/nisar_taquari_50` |
+| Mapa de mudança (cheia/seca) | `GET R/passes/{n}/geojson`, `GET R/export?format=geojson&month=` | NISAR, processado antes, fora da API |
+| Imagem de radar | `/api/static/nisar/...` (endereços vêm em `R/passes`) | arquivos do processamento |
+| Área alagada por município | `GET R/municipalities?month=` | cada polígono vai para o município pelo centro |
+| Previsão | `GET R/forecast` | Open-Meteo (previsão do tempo, não de enchente) |
+| Busca por cidade ou bairro | `GET /api/places?q=&region_id=` | IBGE (local) e Nominatim/OpenStreetMap (externo) |
+| Selo El Niño / La Niña | `GET /api/climate/enso`, `GET /api/explain/{tópico}` | NOAA ONI |
+| Exportação e downloads | `GET R/export?format=json\|csv\|geojson&month=` | NISAR |
+| Vegetação alagada | — | **sem dado**: as cenas são só HH; precisa de HV e reprocessamento |
+| Imagem ilustrada | `assets/img/vale-ilustrado.webp` | ilustração feita a partir do radar de 23/07 |
+| Situação do município | `/api/places` + sedes de `R` + polígonos de cheia | calculado no navegador |
 
 ## Visual (`css/tokens.css`)
 

@@ -112,6 +112,37 @@
 .fc-note { margin: var(--s3) 0 0; font-size: 11.5px; color: var(--text-faint); }
 .v-cta { width: 100%; min-height: 54px; font-size: 16px; text-decoration: none; }
 
+/* cenário simulado */
+.sc-toggle { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--s3); }
+.sc-opt { flex: 1 1 140px; min-height: 40px; padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text-muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.sc-opt[aria-pressed="true"] { background: var(--water); border-color: var(--water); color: var(--bg); }
+.sc-opt:disabled { opacity: .55; cursor: not-allowed; }
+.sc-opt:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+.sc-alert { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--s3); padding: var(--s3) var(--s4); border-radius: var(--r-md); background: var(--accent-soft); color: var(--alert); border-left: 4px solid var(--alert); font-size: 13.5px; line-height: 1.45; }
+.sc-alert b { display: inline-flex; align-items: center; gap: 6px; }
+.sc-alert span { color: var(--text); }
+.v-scenario .v-h3 { margin-top: var(--s4); }
+
+/* minha casa */
+.v-hist { margin-top: var(--s2); font-size: 14px; line-height: 1.5; }
+.v-place-actions { margin-top: var(--s3); display: flex; }
+.v-place-actions .sc-opt { flex: 0 1 auto; }
+.v-casa-k { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--water); }
+
+/* histórico do Sentinel-1 */
+.rec-chart { width: 100%; margin: var(--s2) 0 var(--s4); }
+.rec-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.rec-bar { fill: var(--water); }
+.rec-axis text { fill: var(--text-faint); font-size: 11px; }
+.rec-axis path, .rec-axis line { stroke: var(--line-strong); }
+.rec-unit { fill: var(--text-faint); font-size: 11px; }
+.rec-label { fill: var(--text-muted); font-size: 11px; font-weight: 700; }
+.rec-classes { grid-template-columns: repeat(4, 1fr); margin: 0 0 var(--s4); }
+.rec-classes dd.rec-desc { font-size: 12px; font-weight: 400; color: var(--text-faint); }
+@media (max-width: 720px) { .rec-classes { grid-template-columns: 1fr 1fr; } }
+.sc-tips { margin: var(--s2) 0 0; padding-left: 1.1em; font-size: 14px; line-height: 1.5; color: var(--text); }
+.sc-tips li + li { margin-top: 4px; }
+
 /* imagens */
 .v-images { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); }
 .v-fig { margin: 0; border-radius: var(--r-md); overflow: hidden; background: var(--bg); border: 1px solid var(--line); }
