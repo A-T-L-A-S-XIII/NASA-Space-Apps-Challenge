@@ -13,7 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /srv
 
 # Dependências primeiro, para o Docker reaproveitar a camada quando só o código muda.
-# pipeline/requirements.txt (pillow) é usado pelos testes para gerar data/fixtures.
+# backend/requirements.txt já basta para a API e os testes; pipeline/requirements.txt é para os scripts do pipeline.
 COPY backend/requirements.txt backend/requirements.txt
 COPY pipeline/requirements.txt pipeline/requirements.txt
 RUN pip install -r backend/requirements.txt -r pipeline/requirements.txt
