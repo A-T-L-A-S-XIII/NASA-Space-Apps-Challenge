@@ -1,3 +1,5 @@
+import pytest
+
 from tests.conftest import auth_header, login, register
 
 
@@ -104,4 +106,42 @@ def test_conta_demo_nao_duplica(client):
         ensure_seed_user(db, "Outro", settings.demo_user_email, "outra-senha", role="cidadao")
         assert db.scalar(select(func.count()).select_from(User).where(User.email == settings.demo_user_email)) == 1
     # a senha original continua valendo
+    assert login(client, "demo@teste.dev", "senha-demo-123").status_code == 200
+
+
+# --- segredos obrigatórios ---
+
+@pytest.mark.parametrize("secret", ["", "troque-esta-chave", "curta-demais"])
+def test_api_recusa_chave_jwt_fraca(secret):
+    from app.config import InsecureConfig, check_jwt_secret
+
+    with pytest.raises(InsecureConfig):
+        check_jwt_secret(secret)
+
+
+def test_api_nao_inicia_sem_chave_jwt(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.config import InsecureConfig, settings
+    from app.main import app
+
+    monkeypatch.setattr(settings, "jwt_secret", "")
+    with pytest.raises(InsecureConfig):
+        with TestClient(app):
+            pass
+
+
+@pytest.mark.parametrize("password", ["", "troque-esta-senha", "curta"])
+def test_conta_governo_nao_e_criada_com_senha_fraca(client, password):
+    from app.db import SessionLocal
+    from app.services.users import ensure_seed_gov
+
+    with SessionLocal() as db:
+        assert ensure_seed_gov(db, "Gov", "outro-gov@teste.dev", password) is False
+    assert login(client, "outro-gov@teste.dev", password or "x").status_code == 401
+    assert client.get("/health").status_code == 200
+
+
+def test_login_demo_continua_funcionando(client):
+    """A conta demo é a entrada dos testadores: não depende da conta governo."""
     assert login(client, "demo@teste.dev", "senha-demo-123").status_code == 200

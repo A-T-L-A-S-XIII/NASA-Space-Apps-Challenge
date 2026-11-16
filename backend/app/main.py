@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.config import settings
+from app.config import check_jwt_secret, settings
 from app.db import SessionLocal, create_tables
 from app.routers import alerts, api, auth, climate, explain, forecast, passes, places, regions, water
 from app.schemas import Health
@@ -17,6 +17,7 @@ from app.services.users import ensure_seed_gov, ensure_seed_user
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    check_jwt_secret(settings.jwt_secret)  # sem chave forte a API não sobe (tokens poderiam ser forjados)
     create_tables()
     with SessionLocal() as db:
         ensure_seed_gov(db, settings.seed_gov_name, settings.seed_gov_email, settings.seed_gov_password)

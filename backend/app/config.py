@@ -16,14 +16,16 @@ class Settings(BaseSettings):
     # Regex opcional, ex.: https://water-waltz.*\.vercel\.app (libera os previews da Vercel)
     cors_origin_regex: str | None = None
 
-    jwt_secret: str = "troque-esta-chave"
+    # Obrigatória: a API não inicia sem uma chave forte (veja check_jwt_secret)
+    jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
 
     # Conta governo criada no startup se ainda não existir
     seed_gov_name: str = "Governo RS"
     seed_gov_email: str = "governo@waterwaltz.dev"
-    seed_gov_password: str = "troque-esta-senha"
+    # Sem senha forte definida, a conta governo semente NÃO é criada (veja services/users.py)
+    seed_gov_password: str = ""
 
     # Conta de demonstração (cidadão) criada no startup se ainda não existir: a única que o frontend usa
     demo_user_name: str = "Conta de demonstração"
@@ -80,6 +82,29 @@ class Settings(BaseSettings):
     @classmethod
     def empty_regex(cls, value):
         return value or None
+
+
+JWT_SECRET_MIN_LENGTH = 32
+# Valores que já circularam no código ou na documentação; quem os conhece forja tokens
+KNOWN_WEAK_SECRETS = {"troque-esta-chave", "changeme", "secret"}
+
+
+class InsecureConfig(RuntimeError):
+    pass
+
+
+def check_jwt_secret(secret: str) -> None:
+    """Recusa iniciar a API com uma chave de JWT vazia, conhecida ou curta.
+
+    Quem sabe a chave consegue fabricar o token de qualquer usuário (inclusive governo) sem senha.
+    """
+    hint = 'Gere uma com: python -c "import secrets; print(secrets.token_hex(32))" e defina JWT_SECRET.'
+    if not secret:
+        raise InsecureConfig("JWT_SECRET não definida. " + hint)
+    if secret in KNOWN_WEAK_SECRETS:
+        raise InsecureConfig("JWT_SECRET está com um valor de exemplo público. " + hint)
+    if len(secret) < JWT_SECRET_MIN_LENGTH:
+        raise InsecureConfig(f"JWT_SECRET precisa de pelo menos {JWT_SECRET_MIN_LENGTH} caracteres. " + hint)
 
 
 settings = Settings()

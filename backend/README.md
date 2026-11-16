@@ -13,7 +13,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # troque JWT_SECRET e SEED_GOV_PASSWORD
+cp .env.example .env   # preencha JWT_SECRET (obrigatória: sem ela a API não inicia)
 uvicorn app.main:app --reload
 ```
 
@@ -153,8 +153,8 @@ A API sobe com `uvicorn` na porta `$PORT`, que as duas plataformas definem sozin
 
 | Variável | Valor |
 |---|---|
-| `JWT_SECRET` | `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `SEED_GOV_EMAIL`, `SEED_GOV_PASSWORD` | Conta governo inicial (senha forte) |
+| `JWT_SECRET` | **Obrigatória** (32+ caracteres; sem ela a API não sobe): `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `SEED_GOV_EMAIL`, `SEED_GOV_PASSWORD` | Opcional. Conta governo inicial; só é criada com senha de 8+ caracteres que não seja um valor de exemplo |
 | `CORS_ORIGINS` | URL do Next.js em produção, ex.: `https://water-waltz.vercel.app` (vírgula para várias). Quem chama a API é o servidor do Next, não o navegador |
 | `CORS_ORIGIN_REGEX` | Opcional, para os previews da Vercel: `https://water-waltz.*\.vercel\.app` |
 | `OFFLINE_MODE` | `false` (ou `true` no pitch, se a rede do evento for ruim) |
