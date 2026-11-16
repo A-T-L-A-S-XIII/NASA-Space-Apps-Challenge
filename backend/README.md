@@ -163,6 +163,8 @@ Depois, no projeto da Vercel, aponte o frontend para a URL da API (ex.: `https:/
 
 Cuidados:
 
+- No Render (variável `RENDER` definida), a API **não sobe** se `JWT_SECRET`, `DEMO_USER_PASSWORD` ou
+  `SEED_GOV_PASSWORD` estiver vazio ou com o valor de exemplo (`troque-esta-...`). O log diz qual falta.
 - O SQLite fica dentro do container: **contas e alertas somem a cada deploy ou reinício**. A conta
   governo semente e os alertas de exemplo são recriados no startup. Para guardar dados de verdade,
   use um disco persistente (Render *Disks*, Railway *Volumes*) com `DATABASE_URL=sqlite:////dados/water_waltz.db`.

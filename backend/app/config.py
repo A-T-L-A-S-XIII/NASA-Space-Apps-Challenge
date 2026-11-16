@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from pydantic import field_validator
 from typing import Annotated
 from pathlib import Path
+import os
 
 
 class Settings(BaseSettings):
@@ -83,3 +84,23 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Valores de exemplo do config.py e do .env.example: servem para rodar local, nunca em produção
+DEFAULT_SECRETS = {"troque-esta-chave", "troque-esta-senha"}
+SECRET_FIELDS = ["jwt_secret", "demo_user_password", "seed_gov_password"]
+
+
+def insecure_secrets(s: Settings) -> list[str]:
+    """Nomes (nunca os valores) das variáveis secretas vazias ou com o valor de exemplo."""
+    return [name.upper() for name in SECRET_FIELDS
+            if (getattr(s, name) or "").strip() in DEFAULT_SECRETS | {""}]
+
+
+def check_production_secrets(s: Settings, environ=os.environ):
+    """No Render (variável RENDER definida), o app não sobe com segredo vazio ou de exemplo."""
+    if not environ.get("RENDER"):
+        return
+    bad = insecure_secrets(s)
+    if bad:
+        raise RuntimeError("Segredo vazio ou com o valor de exemplo no Render: " + ", ".join(bad)
+                           + ". Defina um valor forte no painel do Render.")
