@@ -69,6 +69,5 @@ fica no backend como base para a visão futura e não foi removido para a entreg
 - [x] Branch `integracao-mockup` (login pela ponte do Next, conta demo, cadastro desativado): mergeada no PR #18.
 - [x] PR #10 (branch `backend` → `main`) e PRs #11 a #15 mergeados.
 - [x] PRs #16 e #17 fechados: o mockup do #17 entrou pelo #18.
-- [x] Conteúdo do PR #21 (`validate_demo.py` e lista de pendências) trazido para a branch `final/hugo-backend`.
 - [x] Branch `teste-agente` apagada.
 - [ ] Apagar a branch `nisar-import` (dividida nos PRs #11 a #15).

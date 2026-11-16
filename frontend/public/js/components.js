@@ -86,6 +86,7 @@ window.WW = window.WW || {};
     if (origem === "nisar") return { kind: "real", text: "Dado NISAR real" };
     if (origem === "demo") return previsao ? { kind: "demo", text: "Previsão simulada" } : { kind: "demo", text: "Dado ilustrativo" };
     if (origem === "open-meteo") return { kind: "open", text: "Previsão Open-Meteo" };
+    if (origem === "sentinel-1") return { kind: "real", text: "Dado Sentinel-1 real" };
     if (origem === "local") return { kind: "offline", text: "Dado salvo (offline)" };
     return null;
   };
