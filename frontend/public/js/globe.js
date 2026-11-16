@@ -17,7 +17,7 @@
     this.state = {};
     this.canvas = document.createElement("canvas");
     this.canvas.setAttribute("role", "img");
-    this.canvas.setAttribute("aria-label", opts.label || "Globo terrestre interativo");
+    this.canvas.setAttribute("aria-label", opts.label || "Interactive Earth globe");
     this.el.appendChild(this.canvas);
     this.ctx = this.canvas.getContext("2d");
     this.base = document.createElement("canvas");

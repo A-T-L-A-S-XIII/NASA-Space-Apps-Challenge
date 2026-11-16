@@ -167,9 +167,9 @@ test("cadastro: valida cada campo e aceita uma cidade do Vale do Taquari", () =>
   const vazio = WW.validarCadastro({ name: "", email: "", password: "", city: "" });
   assert.deepEqual(Object.keys(vazio).sort(), ["city", "email", "name", "password"]);
   const ruim = WW.validarCadastro({ name: "Ana", email: "ana@", password: "123", city: "Porto Alegre" });
-  assert.equal(ruim.email, "Esse e-mail não parece válido.");
-  assert.equal(ruim.password, "A senha precisa de pelo menos 6 caracteres.");
-  assert.equal(ruim.city, "Escolha uma cidade da lista.");
+  assert.equal(ruim.email, "This e-mail does not look valid.");
+  assert.equal(ruim.password, "The password needs at least 6 characters.");
+  assert.equal(ruim.city, "Choose a town from the list.");
   assert.deepEqual({ ...WW.validarCadastro({ name: "Ana", email: "ana@exemplo.com", password: "senha123", city: "Muçum" }) }, {});
 });
 
@@ -177,8 +177,8 @@ test("cadastro: não chama /register e mostra o aviso com role=status", () => {
   const js = read("../public/js/login.js");
   assert.doesNotMatch(js, /auth\/register/);
   assert.match(js, /role="status"/);
-  assert.match(js, /O cadastro está desativado nesta demonstração\. Entre com a conta de demonstração\./);
-  assert.match(js, /Protótipo de demonstração\. Use a conta da equipe ou entre como visitante\./);
+  assert.match(js, /Sign-up is disabled in this demo\. Log in with the demo account/);
+  assert.match(js, /Demo prototype\. Use the team account or continue as a guest\./);
 });
 
 /* ------------------------------------------------- visitante */
@@ -217,7 +217,7 @@ test("visitante: sair limpa a marca; login de verdade também", async () => {
 
 test("login.js: botão de visitante no cartão de login", () => {
   const js = read("../public/js/login.js");
-  assert.match(js, /id="guestBtn"[^>]*>Entrar como visitante</);
+  assert.match(js, /id="guestBtn"[^>]*>Continue as guest</);
   assert.match(js, /WW\.api\.visitante\(\)/);
 });
 

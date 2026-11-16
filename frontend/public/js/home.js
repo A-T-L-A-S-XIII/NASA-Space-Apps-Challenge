@@ -9,8 +9,8 @@
 
   WW.Home = function (root, { content, onRegion }) {
     const user = content.user, loc = user.location;
-    const words = "Ver por onde a água passa,".split(" ");
-    const em = "mesmo através das nuvens.".split(" ");
+    const words = "See where the water goes,".split(" ");
+    const em = "even through the clouds.".split(" ");
     let wi = 0;
     const h1 = words.map((w) => `<span class="word" style="--i:${wi++}">${w}</span>`).join(" ")
       + " <em>" + em.map((w) => `<span class="word" style="--i:${wi++}">${w}</span>`).join(" ") + "</em>";
@@ -23,34 +23,34 @@
       <div class="sat" id="sat">
         <div class="enso-slot" id="ensoSlot"></div>
         <button class="sat-btn" type="button" id="satBtn" aria-expanded="false" aria-controls="satPanel">
-          ${WW.icon.satellite}<span>Satélite</span><span class="sat-tag">NISAR</span>
+          ${WW.icon.satellite}<span>Satellite</span><span class="sat-tag">NISAR</span>
         </button>
-        <div class="sat-panel" id="satPanel" role="dialog" aria-label="Satélite NISAR" hidden></div>
+        <div class="sat-panel" id="satPanel" role="dialog" aria-label="NISAR satellite" hidden></div>
       </div>
 
       <div class="globe-quarter" id="globeQuarter"></div>
 
       <section class="hero" aria-labelledby="hero-title">
-        <span class="kicker"><span class="chip chip-water"><span class="dot live"></span>Radar NISAR · banda L</span></span>
+        <span class="kicker"><span class="chip chip-water"><span class="dot live"></span>NISAR radar · L-band</span></span>
         <h1 id="hero-title">${h1}</h1>
-        <p>O radar enxerga o chão de dia, de noite e sob chuva. Aqui você vê onde ele observou água ao longo do tempo na sua região — um registro do que foi visto, não uma previsão.</p>
+        <p>The radar sees the ground by day, by night and under rain. Here you see where it observed water over time in your region — a record of what was seen, not a forecast.</p>
         <div class="hero-facts">
-          <span class="chip">21 imagens desde jun/2026</span>
-          <span class="chip">Revisita a cada 12 dias</span>
-          <span class="chip">Foco: ${WW.esc(loc.regionName)}, ${WW.esc(loc.stateUF)}</span>
+          <span class="chip">21 images since Jun 2026</span>
+          <span class="chip">Revisit every 12 days</span>
+          <span class="chip">Focus: ${WW.esc(loc.regionName)}, ${WW.esc(loc.stateUF)}</span>
         </div>
       </section>
 
-      <aside class="region-cta" aria-label="Sua região">
+      <aside class="region-cta" aria-label="Your region">
         <div>
-          <div class="kicker">Sua região</div>
+          <div class="kicker">Your region</div>
           <div class="rc-title">${WW.esc(loc.continent)}</div>
           <div class="rc-sub">${WW.esc(loc.municipalityName)} · ${WW.esc(loc.stateName)}</div>
         </div>
-        <button class="dot-btn" type="button" id="regionBtn" aria-label="Explorar dados ${WW.esc(loc.continentOf)}">${WW.icon.dots}</button>
+        <button class="dot-btn" type="button" id="regionBtn" aria-label="Explore data for ${WW.esc(loc.continent)}">${WW.icon.dots}</button>
       </aside>
 
-      <aside class="news-rail" id="newsRail" aria-label="Notícias da sua região"></aside>`;
+      <aside class="news-rail" id="newsRail" aria-label="News from your region"></aside>`;
 
     WW.NewsRail(WW.$("#newsRail", root), { items: content.news, user });
     WW.EnsoBadge(WW.$("#ensoSlot", root)); // El Niño / La Niña: sem dado, o espaço fica vazio
@@ -70,7 +70,7 @@
     const world = window.GEO_WORLD.features;
     const isMine = (f) => f.properties.continent === loc.continent;
     const globe = new WW.Globe(holder, {
-      label: "Globo: um quarto da calota com a América do Sul em destaque",
+      label: "Globe: a quarter of the sphere with South America highlighted",
       rotate: [100, 52, 0],
       sway: !WW.reducedMotion(),
       anchor: (w, h) => [0, h],
@@ -89,8 +89,8 @@
         if (!hit) return WW.tooltip.hide();
         const p = hit.feature.properties;
         WW.tooltip.show(isMine(hit.feature)
-          ? `<strong>${WW.esc(p.continent)}</strong><span class="muted">Sua região · ${WW.esc(p.name)}</span><br><span class="go">Clique para acessar os dados →</span>`
-          : `<strong>${WW.esc(p.continent)}</strong><span class="muted">Fora da sua região</span>`, e.clientX, e.clientY);
+          ? `<strong>${WW.esc(p.continent)}</strong><span class="muted">Your region · ${WW.esc(p.name)}</span><br><span class="go">Click to open the data →</span>`
+          : `<strong>${WW.esc(p.continent)}</strong><span class="muted">Outside your region</span>`, e.clientX, e.clientY);
       },
       onClick: (hit) => { if (hit && isMine(hit.feature)) { WW.tooltip.hide(); onRegion(); } },
     });
@@ -110,26 +110,26 @@
     /* ---------------- Satélite: pílula + painel com dados do backend ---------------- */
     const sat = WW.$("#sat", root), satBtn = WW.$("#satBtn", root), satPanel = WW.$("#satPanel", root);
     let satLoaded = false;
-    const dLong = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
+    const dLong = (iso) => String(iso).slice(0, 10);
     async function loadSat() {
       satLoaded = true;
-      satPanel.innerHTML = `<p class="sat-note">Carregando dados do satélite…</p>`;
+      satPanel.innerHTML = `<p class="sat-note">Loading satellite data…</p>`;
       try {
         const [ps, meta] = await Promise.all([WW.api.get("/api/nisar/passagens"), WW.api.get("/api/nisar/metadados")]);
         const last = ps.itens[ps.itens.length - 1];
         satPanel.innerHTML = `
-          <div class="sat-head"><b>${WW.esc(meta.satelite)}</b><span class="chip chip-water">banda ${WW.esc(meta.banda)} · ${meta.polarizacao.join("/")}</span></div>
+          <div class="sat-head"><b>${WW.esc(meta.satelite)}</b><span class="chip chip-water">${WW.esc(meta.banda)}-band · ${meta.polarizacao.join("/")}</span></div>
           <dl class="sat-list">
-            <div><dt>Produto</dt><dd>${WW.esc(meta.produto)}</dd></div>
-            <div><dt>Passagens processadas</dt><dd>${ps.itens.length} · ${dLong(meta.periodo.inicio)} a ${dLong(meta.periodo.fim)}</dd></div>
-            <div><dt>Órbitas</dt><dd>${meta.trilhas.map((t) => `${WW.esc(t.trilha)} (${t.passagens})`).join(" · ")}</dd></div>
-            <div><dt>Última passagem</dt><dd>${dLong(last.data)} · ${WW.fmt(last.agua_km2, 1)} km² de água vista</dd></div>
+            <div><dt>Product</dt><dd>${WW.esc(meta.produto)}</dd></div>
+            <div><dt>Processed passes</dt><dd>${ps.itens.length} · ${dLong(meta.periodo.inicio)} to ${dLong(meta.periodo.fim)}</dd></div>
+            <div><dt>Orbits</dt><dd>${meta.trilhas.map((t) => `${WW.esc(t.trilha)} (${t.passagens})`).join(" · ")}</dd></div>
+            <div><dt>Latest pass</dt><dd>${dLong(last.data)} · ${WW.fmt(last.agua_km2, 1)} km² of water seen</dd></div>
           </dl>
-          <a class="btn btn-primary sat-link" href="#/vale/dados">Ver passagens ${WW.icon.chevron}</a>
-          <p class="sat-note">Fonte: ${WW.esc(meta.fonte)}</p>`;
+          <a class="btn btn-primary sat-link" href="#/vale/dados">See the passes ${WW.icon.chevron}</a>
+          <p class="sat-note">Source: ${WW.esc(meta.fonte)}</p>`;
       } catch (e) {
         satLoaded = false;
-        satPanel.innerHTML = `<p class="sat-note">NISAR (NASA/ISRO) · radar de banda L, revisita a cada 12 dias.<br>Não foi possível carregar as passagens agora (${WW.esc(e.message || e)}).</p>`;
+        satPanel.innerHTML = `<p class="sat-note">NISAR (NASA/ISRO) · L-band radar, revisit every 12 days.<br>Could not load the passes now (${WW.esc(e.message || e)}).</p>`;
       }
     }
     function toggleSat(open) {

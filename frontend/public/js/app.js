@@ -27,7 +27,7 @@
   function applyTheme(t) {
     document.documentElement.setAttribute("data-theme", t);
     const b = WW.$("#themeBtn");
-    if (b) { b.innerHTML = t === "light" ? WW.icon.moon : WW.icon.sun; b.setAttribute("aria-label", t === "light" ? "Usar tema escuro" : "Usar tema claro"); }
+    if (b) { b.innerHTML = t === "light" ? WW.icon.moon : WW.icon.sun; b.setAttribute("aria-label", t === "light" ? "Use dark theme" : "Use light theme"); }
     home && home.theme(); explore && explore.theme();
   }
 
@@ -35,15 +35,15 @@
   function topbar() {
     WW.$("#topbar").innerHTML = `
       ${WW.brand()}
-      <nav class="tabs" role="tablist" aria-label="Abas">
-        <button class="tab-btn" role="tab" id="tabbtn-home" aria-controls="tab-home" data-href="#/inicio"><span class="n">01</span>Visão geral</button>
-        <button class="tab-btn" role="tab" id="tabbtn-explore" aria-controls="tab-explore" data-href="#/explorar"><span class="n">02</span>Explorar dados</button>
+      <nav class="tabs" role="tablist" aria-label="Tabs">
+        <button class="tab-btn" role="tab" id="tabbtn-home" aria-controls="tab-home" data-href="#/inicio"><span class="n">01</span>Overview</button>
+        <button class="tab-btn" role="tab" id="tabbtn-explore" aria-controls="tab-explore" data-href="#/explorar"><span class="n">02</span>Explore data</button>
       </nav>
       <div class="topbar-spacer"></div>
       <div class="topbar-tools">
         ${WW.mode.selector()}
         <button class="btn btn-icon btn-ghost" id="themeBtn" type="button"></button>
-        <button class="btn btn-icon btn-ghost" id="logoutBtn" type="button" aria-label="Sair" title="Sair">${WW.icon.logout}</button>
+        <button class="btn btn-icon btn-ghost" id="logoutBtn" type="button" aria-label="Log out" title="Log out">${WW.icon.logout}</button>
         <span class="avatar" id="avatar"></span>
       </div>`;
     WW.$$(".tab-btn").forEach((b) => b.addEventListener("click", () => {
@@ -69,7 +69,7 @@
       valeView = null; // redesenha a tela atual do Vale no novo modo
       route();
     } else if (e.detail.mode === "aprofundado") {
-      WW.toast(`Modo Aprofundado ativo. Os dados técnicos e a exportação ficam no <a href="#/vale/dados">painel do Vale do Taquari</a>.`);
+      WW.toast(`In-depth mode on. The technical data and the export are in the <a href="#/vale/dados">Vale do Taquari panel</a>.`);
     }
   });
 
@@ -77,13 +77,13 @@
   let fromRotation = null;
   WW.requestRegion = async function () {
     const ok = await WW.confirm({
-      kicker: "Sua região",
-      title: `Acessar os dados ${loc.continentOf}?`,
-      body: `Você vai abrir os <b>dados meteorológicos e topográficos</b> do seu continente. A partir daí, a navegação desce em escala — clique em cada nível para aproximar.`,
+      kicker: "Your region",
+      title: `Open the data for ${loc.continent}?`,
+      body: `You are about to open the <b>weather and terrain data</b> of your continent. From there, navigation goes down in scale — click each level to zoom in.`,
       path: [loc.continent, loc.countryName, loc.stateName, loc.municipalityName],
       img: "assets/img/level-continent.webp",
-      confirmLabel: "Sim, acessar dados",
-      cancelLabel: "Agora não",
+      confirmLabel: "Yes, open the data",
+      cancelLabel: "Not now",
     });
     if (!ok) return;
     if (currentTab === "home" && home) fromRotation = home.rotation();
@@ -107,7 +107,7 @@
     home && home.hide(); explore && explore.hide();
     if (!login) login = WW.Login(vLogin, { onEnter: enterApp, mode });
     else login.setMode(mode);
-    document.title = (mode === "cadastro" ? "Criar conta" : "Entrar") + " · Water Waltz";
+    document.title = (mode === "cadastro" ? "Create account" : "Log in") + " · Water Waltz";
   }
 
   function enterApp(pt, s) {
@@ -179,7 +179,7 @@
         valeView = view;
         (view === "dados" ? WW.ValeDados : WW.ValeHome)(tVale);
       }
-      document.title = (view === "dados" ? "Dados detalhados" : "Vale do Taquari") + " · Water Waltz";
+      document.title = (view === "dados" ? "Detailed data" : "Vale do Taquari") + " · Water Waltz";
       return;
     }
     if (h.startsWith("#/explorar")) {
@@ -188,10 +188,10 @@
       store.set("ww-path", path.join("/"));
       explore.go(path, { from: changed ? (fromRotation || [100, 52, 0]) : null });
       fromRotation = null;
-      document.title = "Explorar dados · Water Waltz";
+      document.title = "Explore data · Water Waltz";
     } else {
       setTab("home");
-      document.title = "Visão geral · Water Waltz";
+      document.title = "Overview · Water Waltz";
     }
   }
 

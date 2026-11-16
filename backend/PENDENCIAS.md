@@ -1,73 +1,87 @@
-# Pendências do backend
+# Backend backlog
 
-O que ficou para depois. Ao concluir um item, apague-o daqui (ou marque `[x]`).
+What was left for later. When an item is done, delete it here (or mark it `[x]`).
 
-## Dados
+## Data
 
-### Histórico do Sentinel-1 (feito, falta usar no frontend)
+### Sentinel-1 history (done, partly used in the frontend)
 
-- [x] Script `scripts/process_sentinel1.py` (Earth Engine) e rota `GET /api/regions/{id}/recurrence`.
-- [ ] Mostrar no frontend: camada de classes no mapa, classe de cada cidade e a série mensal.
-- [ ] Conferir o resultado contra as enchentes conhecidas (set/2023, nov/2023, mai/2024) e ajustar o limiar se precisar.
+- [x] Script `scripts/process_sentinel1.py` (Earth Engine) and route `GET /api/regions/{id}/recurrence`.
+- [ ] Show in the frontend: class layer on the map. (The class of each town and the monthly series are on the
+  detailed data screen since PR #24.)
+- [ ] Check the result against the known floods (Sep 2023, Nov 2023, May 2024) and adjust the threshold if
+  needed.
 
-### Servir o NISAR já processado (`Fotos/nisar_taquari_50/`) (feito)
+### Serve the processed NISAR passes (`Fotos/nisar_taquari_50/`) (done)
 
-- [x] Rotas que servem as 19 passagens já processadas (PR #18): `GET /api/regions/{id}/passes`,
-  `/passes/{n}/geojson`, imagens, municípios e exportação, lidas por `app/services/passes.py`.
-- **Cuidado 1:** a área de água depende da trilha (órbita). A `053_D` mede de 1 a 5 km² e a `103_A` mede de 7 a 9 km², no mesmo rio. Só compare datas da **mesma trilha**.
-- **Cuidado 2:** a área processada vai de −29,15 a −29,55 de latitude, mais ou menos de Muçum a Lajeado. Estrela, Bom Retiro do Sul e Taquari ficam de fora.
-- **Em aberto:** de onde vêm o método, o limiar e a "janela da enchente" (03/07 a 28/08/2026) do catálogo. O notebook que gerou `Fotos/` não está no repositório; a origem dos grânulos está documentada no PR #11 (`docs/DATA.md`).
+- [x] Routes that serve the 19 processed passes (PR #18): `GET /api/regions/{id}/passes`,
+  `/passes/{n}/geojson`, images, municipalities and export, read by `app/services/passes.py`.
+- **Note 1:** the water area depends on the track (orbit). `053_D` measures 1 to 5 km² and `103_A` measures
+  7 to 9 km², on the same river. Compare only dates from the **same track**.
+- **Note 2:** the processed area runs from −29.15 to −29.55 latitude, roughly from Muçum to Lajeado.
+  Estrela, Bom Retiro do Sul and Taquari are left out.
+- **Open:** where the method, the threshold and the "flood window" (2026-07-03 to 2026-08-28) of the
+  catalogue come from. The notebook that produced `Fotos/` is not in the repository; the origin of the
+  granules is documented in PR #11 (`docs/DATA.md`).
 
-### Rotas de secas e enchentes
+### Drought and flood routes
 
-- [x] O "recorrente ou pontual?" do histórico já sai em `/recurrence`.
-- [ ] Juntar o detalhe do NISAR (as 19 passagens) na mesma resposta, se der tempo. Todo dado simulado deve levar `"source": "demo"`.
+- [x] The "recurrent or one-off?" of the history is served by `/recurrence`.
+- [ ] Add the NISAR detail (the 19 passes) to the same response, if there is time. Every simulated value must
+  carry `"source": "demo"`.
 
-## Escopo: conta governo e alertas (aguardando decisão da equipe)
+## Scope: government account and alerts (waiting for a team decision)
 
-O frontend não usa a conta governo nem os alertas (conferido por grep em `frontend/` em 2026-11-15); o código
-fica no backend como base para a visão futura e não foi removido para a entrega final.
+The app has one account, the demo account (`DEMO_USER_*`), plus guest access, and shows no alerts. The
+frontend uses neither the government account nor the alerts (checked by grep in `frontend/` on 2026-11-15);
+the code stays in the backend as a base for the future vision and was not removed for the final delivery.
 
-- [ ] Decidir se remove ou mantém:
-  - a conta governo semente (`ensure_seed_gov`, `SEED_GOV_*` no `.env` e no `config.py`);
-  - `require_gov` e a rota `POST /api/auth/gov-users`;
-  - os alertas: `GET /api/alerts`, criar e desativar alerta, `GET /api/gov/export/{region_id}.csv`,
-    `GET /api/me/city-status` e os alertas de exemplo (`ensure_demo_alerts`);
-  - o cadastro público `POST /api/auth/register` (a tela de cadastro não o chama).
-- [ ] Se remover: apagar também os testes (`test_alerts.py`, os de governo em `test_auth.py`), as variáveis
-  `SEED_GOV_*` do `conftest.py` e do `.env.example`, e as menções no guia do projeto (raiz) e em `docs/`.
+- [ ] Decide whether to remove or keep:
+  - the seed government account (`ensure_seed_gov`, `SEED_GOV_*` in `.env` and `config.py`);
+  - `require_gov` and the route `POST /api/auth/gov-users`;
+  - the alerts: `GET /api/alerts`, create and turn off an alert, `GET /api/gov/export/{region_id}.csv`,
+    `GET /api/me/city-status` and the sample alerts (`ensure_demo_alerts`);
+  - the public sign-up `POST /api/auth/register` (the sign-up screen does not call it).
+- [ ] If removed: also delete the tests (`test_alerts.py`, the government ones in `test_auth.py`), the
+  `SEED_GOV_*` variables in `conftest.py` and `.env.example`, and the mentions in the root guide and in
+  `docs/`.
 
-## Segurança (antes de publicar a API)
+## Security (before publishing the API)
 
-- [x] Trocar `JWT_SECRET` e `SEED_GOV_PASSWORD` no `.env` local.
-- [x] Revisão de segurança (login, tokens, CORS), com testes em `tests/test_security.py`: 401 para token
-  ausente, malformado, com outra assinatura, expirado e com alg `none`; CORS sem `*` e sem
-  `Access-Control-Allow-Origin` para origem desconhecida; login com a mesma mensagem para e-mail ou senha
-  errados; senha em bcrypt.
-- [x] No Render (variável `RENDER`), a API não sobe com `JWT_SECRET`, `DEMO_USER_PASSWORD` ou `SEED_GOV_PASSWORD`
-  vazio ou com o valor de exemplo.
-- [x] Varredura de segredos no código, nos testes e no histórico do git: nada real. Foi por padrão de texto
-  (gitleaks e trufflehog não estavam instalados); `.env` e `*.db` estão no `.gitignore`.
-- [ ] Conferir no painel do Render: `JWT_SECRET` e `SEED_GOV_PASSWORD` sorteados, `DEMO_USER_PASSWORD` forte e
-  diferente do de teste, `CORS_ORIGINS` com a URL da Vercel sem barra no fim. No Next (Vercel): `API_URL`,
-  `DEMO_EMAIL` (igual a `DEMO_USER_EMAIL`) e `JWT_EXPIRE_MINUTES` (igual ao do backend).
-- [ ] Banco persistente no deploy: hoje o SQLite do container some a cada deploy (contas e alertas).
-- [ ] Rodar gitleaks ou trufflehog no histórico quando houver tempo de instalar.
+- [x] Change `JWT_SECRET` and `SEED_GOV_PASSWORD` in the local `.env`.
+- [x] Security review (login, tokens, CORS), with tests in `tests/test_security.py`: 401 for a missing,
+  malformed, wrongly signed, expired and `alg: none` token; CORS without `*` and no
+  `Access-Control-Allow-Origin` for an unknown origin; login gives the same message for a wrong e-mail or a
+  wrong password; passwords stored with bcrypt.
+- [x] On Render (`RENDER` set), the API does not start with `JWT_SECRET`, `DEMO_USER_PASSWORD` or
+  `SEED_GOV_PASSWORD` empty or set to the example value.
+- [x] Secret scan of the code, the tests and the git history: nothing real. Done with text patterns (gitleaks
+  and trufflehog were not installed); `.env` and `*.db` are in `.gitignore`.
+- [ ] Check the Render dashboard: `JWT_SECRET` and `SEED_GOV_PASSWORD` generated, `DEMO_USER_PASSWORD` strong
+  and different from the test one, `CORS_ORIGINS` with the Vercel URL and no trailing slash. In Next
+  (Vercel): `API_URL`, `DEMO_EMAIL` (same as `DEMO_USER_EMAIL`) and `JWT_EXPIRE_MINUTES` (same as the backend).
+- [ ] Persistent database in the deploy: today the container's SQLite disappears on every deploy (accounts and
+  alerts).
+- [ ] Run gitleaks or trufflehog on the history when there is time to install them.
 
-## Ajustes pequenos
+## Small fixes
 
-- [x] `pytest` passa a partir de uma instalação limpa (`pip install -r requirements.txt`).
-- [x] `SEED_GOV_EMAIL` e `DEMO_USER_EMAIL` passam pela mesma validação do login (`EmailStr`) no `config.py`: um
-  domínio reservado (`.test`, `.local`) é recusado ao subir, em vez de criar uma conta sem login.
-- [x] `data_maturity` sai `"validated"` para a coleção `NISAR_L2_GCOV_V1` (no CMR, "NISAR Validated ...").
-- [ ] Trocar `httpx` por `httpx2` nos testes (aviso de que o `httpx` está obsoleto no TestClient do Starlette).
-- [ ] Conferir se `frontend/public/data/fallback/` bate com o que a API ao vivo devolve (fora do escopo do backend).
+- [x] `pytest` passes from a clean install (`pip install -r requirements.txt`).
+- [x] `SEED_GOV_EMAIL` and `DEMO_USER_EMAIL` go through the same validation as the login (`EmailStr`) in
+  `config.py`: a reserved domain (`.test`, `.local`) is refused at startup instead of creating an account
+  that cannot log in.
+- [x] `data_maturity` is `"validated"` for the `NISAR_L2_GCOV_V1` collection (in CMR, "NISAR Validated ...").
+- [x] `frontend/public/data/fallback/` checked against the live API on Render: same content (only
+  `generated_at` differs), no regeneration needed.
+- [ ] Replace `httpx` with `httpx2` in the tests (warning that `httpx` is deprecated in Starlette's
+  TestClient).
 
-## Repositório
+## Repository
 
-- [x] Backend integrado ao projeto (branch `teste-agente`, PR #1, já mergeado).
-- [x] Branch `integracao-mockup` (login pela ponte do Next, conta demo, cadastro desativado): mergeada no PR #18.
-- [x] PR #10 (branch `backend` → `main`) e PRs #11 a #15 mergeados.
-- [x] PRs #16 e #17 fechados: o mockup do #17 entrou pelo #18.
-- [x] Branch `teste-agente` apagada.
-- [ ] Apagar a branch `nisar-import` (dividida nos PRs #11 a #15).
+- [x] Backend integrated into the project (branch `teste-agente`, PR #1, merged).
+- [x] Branch `integracao-mockup` (login through the Next bridge, demo account, sign-up disabled): merged in
+  PR #18.
+- [x] PR #10 (branch `backend` → `main`) and PRs #11 to #15 merged.
+- [x] PRs #16 and #17 closed: the #17 mockup came in through #18.
+- [x] Branch `teste-agente` deleted.
+- [ ] Delete the `nisar-import` branch (split into PRs #11 to #15).

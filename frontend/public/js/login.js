@@ -15,27 +15,27 @@
   const IMG_RATIO = 2400 / 1357;
   // Posições (% da imagem do mapa) de cada parada e da camada que salta
   const ZONES = [
-    { key: "eu",  label: "Europa",               c: 0.0, focus: [0.80, 0.42], layer: { x: 0.885, y: 0.36, w: 0.25 }, ripple: [0.80, 0.465] },
-    { key: "mid", label: "Atlântico Norte",      c: 0.5, focus: [0.54, 0.52], layer: { x: 0.54,  y: 0.50, w: 0.22 }, ripple: [0.54, 0.528] },
-    { key: "na",  label: "América do Norte",     c: 1.0, focus: [0.20, 0.50], layer: { x: 0.13,  y: 0.40, w: 0.30 }, ripple: [0.20, 0.645] },
+    { key: "eu",  label: "Europe",               c: 0.0, focus: [0.80, 0.42], layer: { x: 0.885, y: 0.36, w: 0.25 }, ripple: [0.80, 0.465] },
+    { key: "mid", label: "North Atlantic",       c: 0.5, focus: [0.54, 0.52], layer: { x: 0.54,  y: 0.50, w: 0.22 }, ripple: [0.54, 0.528] },
+    { key: "na",  label: "North America",        c: 1.0, focus: [0.20, 0.50], layer: { x: 0.13,  y: 0.40, w: 0.30 }, ripple: [0.20, 0.645] },
   ];
 
   const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
   function erroEmail(email) {
-    if (!email) return "Informe o e-mail.";
-    return EMAIL.test(email) ? "" : "Esse e-mail não parece válido.";
+    if (!email) return "Enter your e-mail.";
+    return EMAIL.test(email) ? "" : "This e-mail does not look valid.";
   }
   const limpo = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v));
 
   /* Validação por campo: devolve { campo: mensagem } só com os campos inválidos. */
-  WW.validarLogin = ({ email, password }) => limpo({ email: erroEmail(email), password: password ? "" : "Informe a senha." });
+  WW.validarLogin = ({ email, password }) => limpo({ email: erroEmail(email), password: password ? "" : "Enter your password." });
   WW.validarCadastro = ({ name, email, password, city }) => {
     const cidades = ((window.WW_CONTENT && window.WW_CONTENT.valeMunicipios) || []).map((m) => m.name);
     return limpo({
-      name: name.length >= 2 ? "" : name ? "O nome precisa de pelo menos 2 letras." : "Informe seu nome.",
+      name: name.length >= 2 ? "" : name ? "The name needs at least 2 letters." : "Enter your name.",
       email: erroEmail(email),
-      password: !password ? "Informe a senha." : password.length < 6 ? "A senha precisa de pelo menos 6 caracteres." : "",
-      city: !city ? "Escolha sua cidade." : cidades.length && !cidades.includes(city) ? "Escolha uma cidade da lista." : "",
+      password: !password ? "Enter your password." : password.length < 6 ? "The password needs at least 6 characters." : "",
+      city: !city ? "Choose your town." : cidades.length && !cidades.includes(city) ? "Choose a town from the list." : "",
     });
   };
 
@@ -60,7 +60,7 @@
             <div class="login-brand">${WW.brand({ variant: "dark" })}</div>
 
             <div class="zone-indicator" aria-hidden="true">
-              <div class="zi-hint">${WW.icon.down} ${fullMotion ? "role ou mova o cursor" : "role ou use as setas"}</div>
+              <div class="zi-hint">${WW.icon.down} ${fullMotion ? "scroll or move the cursor" : "scroll or use the arrow keys"}</div>
               ${ZONES.map((z, i) => `<div class="zi-step" data-z="${z.key}"><span class="bar"></span><b>${String(i + 1).padStart(2, "0")}</b> · ${z.label}</div>`).join("")}
             </div>
 
@@ -182,12 +182,12 @@
     const slot = WW.$("#cardSlot", root);
     const point = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
     const setErr = (input, box, msg) => { box.textContent = msg; input.setAttribute("aria-invalid", msg ? "true" : "false"); };
-    const foot = `<div class="login-foot"><span>NASA Space Apps 2026 · Dancing with the SARs</span><span class="badge-demo">mockup</span></div>`;
+    const foot = `<div class="login-foot"><span>NASA Space Apps 2026 · Dancing with the SARs</span><span class="badge-demo">prototype</span></div>`;
     const senha = (autocomplete, extra = "") => `
-      <label class="field"><span>Senha</span>
+      <label class="field"><span>Password</span>
         <span class="reveal">
           <input type="password" name="password" autocomplete="${autocomplete}" placeholder="••••••••" required aria-describedby="err-senha${extra ? " dica-senha" : ""}">
-          <button type="button" class="reveal-btn" data-reveal aria-label="Mostrar senha" aria-pressed="false">${WW.icon.eye}</button>
+          <button type="button" class="reveal-btn" data-reveal aria-label="Show password" aria-pressed="false">${WW.icon.eye}</button>
         </span>
         ${extra}
         <span class="field-msg" id="err-senha" role="alert"></span></label>`;
@@ -197,7 +197,7 @@
         const btn = e.currentTarget, show = form.password.type === "password";
         form.password.type = show ? "text" : "password";
         btn.setAttribute("aria-pressed", show);
-        btn.setAttribute("aria-label", show ? "Esconder senha" : "Mostrar senha");
+        btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
         btn.innerHTML = show ? WW.icon.eyeOff : WW.icon.eye;
       });
     }
@@ -206,7 +206,7 @@
     function mark(form, erros, boxes, err) {
       for (const [nome, box] of Object.entries(boxes)) setErr(form[nome], box, erros[nome] || "");
       if (!Object.keys(erros).length) return false;
-      err.textContent = "Confira os campos.";
+      err.textContent = "Check the fields.";
       (form.querySelector('[aria-invalid="true"]') || form.elements[0]).focus();
       return true;
     }
@@ -215,21 +215,21 @@
       slot.innerHTML = `
         <form class="login-card" id="loginForm" novalidate aria-labelledby="login-title">
           <p class="login-kicker">Radar NISAR · Vale do Taquari</p>
-          <h1 class="login-title" id="login-title" tabindex="-1">Entre no Water Waltz</h1>
-          <p class="login-sub">Acompanhe por onde a água passou na sua região, visto pelo radar NISAR.</p>
+          <h1 class="login-title" id="login-title" tabindex="-1">Log in to Water Waltz</h1>
+          <p class="login-sub">Follow where water went in your region, as seen by the NISAR radar.</p>
           <label class="field"><span>E-mail</span>
-            <input type="email" name="email" autocomplete="username" placeholder="voce@exemplo.com" required aria-describedby="err-email">
+            <input type="email" name="email" autocomplete="username" placeholder="you@example.com" required aria-describedby="err-email">
             <span class="field-msg" id="err-email" role="alert"></span></label>
           ${senha("current-password")}
           <div class="login-error" id="loginError" role="alert" tabindex="-1"></div>
           <div class="login-row">
-            <label><input type="checkbox" name="remember" checked> Manter conectado</label>
-            <a href="#" onclick="return false">Esqueci a senha</a>
+            <label><input type="checkbox" name="remember" checked> Keep me signed in</label>
+            <a href="#" onclick="return false">Forgot password</a>
           </div>
-          <button class="btn btn-ink" type="submit">Entrar ${WW.icon.chevron}</button>
-          <button class="btn btn-outline-ink" type="button" id="guestBtn">Entrar como visitante</button>
-          <p class="login-note">Protótipo de demonstração. Use a conta da equipe ou entre como visitante.</p>
-          <a class="btn btn-outline-ink" href="#/cadastro">Criar conta</a>
+          <button class="btn btn-ink" type="submit">Log in ${WW.icon.chevron}</button>
+          <button class="btn btn-outline-ink" type="button" id="guestBtn">Continue as guest</button>
+          <p class="login-note">Demo prototype. Use the team account or continue as a guest.</p>
+          <a class="btn btn-outline-ink" href="#/cadastro">Create account</a>
           ${foot}
         </form>`;
       const form = WW.$("#loginForm", root), err = WW.$("#loginError", root);
@@ -251,12 +251,12 @@
           const sessao = await WW.api.login(email, pw, form.remember.checked);
           onEnter(point(submit), sessao);
         } catch (ex) {
-          err.textContent = ex.status === 401 ? "E-mail ou senha incorretos."
-            : ex.status === 502 || ex.status === 504 || !ex.status ? "Não foi possível falar com o servidor. Entre com a conta de demonstração."
+          err.textContent = ex.status === 401 ? "Wrong e-mail or password."
+            : ex.status === 502 || ex.status === 504 || !ex.status ? "Could not reach the server. Log in with the demo account."
             : ex.message;
           err.focus();
         } finally {
-          submit.disabled = false; submit.innerHTML = `Entrar ${WW.icon.chevron}`;
+          submit.disabled = false; submit.innerHTML = `Log in ${WW.icon.chevron}`;
         }
       });
       return form;
@@ -267,24 +267,24 @@
       slot.innerHTML = `
         <form class="login-card" id="signupForm" novalidate aria-labelledby="signup-title">
           <p class="login-kicker">Radar NISAR · Vale do Taquari</p>
-          <h1 class="login-title" id="signup-title" tabindex="-1">Crie sua conta</h1>
-          <p class="login-sub">Acompanhe a água na sua cidade do Vale do Taquari.</p>
-          <label class="field"><span>Nome</span>
-            <input type="text" name="name" autocomplete="name" placeholder="Seu nome" required aria-describedby="err-nome">
+          <h1 class="login-title" id="signup-title" tabindex="-1">Create your account</h1>
+          <p class="login-sub">Follow the water in your town in the Vale do Taquari.</p>
+          <label class="field"><span>Name</span>
+            <input type="text" name="name" autocomplete="name" placeholder="Your name" required aria-describedby="err-nome">
             <span class="field-msg" id="err-nome" role="alert"></span></label>
           <label class="field"><span>E-mail</span>
-            <input type="email" name="email" autocomplete="email" placeholder="voce@exemplo.com" required aria-describedby="err-email">
+            <input type="email" name="email" autocomplete="email" placeholder="you@example.com" required aria-describedby="err-email">
             <span class="field-msg" id="err-email" role="alert"></span></label>
-          ${senha("new-password", `<span class="field-hint" id="dica-senha">Pelo menos 6 caracteres.</span>`)}
-          <label class="field"><span>Cidade</span>
+          ${senha("new-password", `<span class="field-hint" id="dica-senha">At least 6 characters.</span>`)}
+          <label class="field"><span>Town</span>
             <select name="city" required aria-describedby="err-cidade">
-              <option value="">Escolha sua cidade</option>${cidades}
+              <option value="">Choose your town</option>${cidades}
             </select>
             <span class="field-msg" id="err-cidade" role="alert"></span></label>
           <div class="login-error" id="signupError" role="alert"></div>
           <div class="login-status" id="signupStatus" role="status" tabindex="-1"></div>
-          <button class="btn btn-ink" type="submit">Criar conta ${WW.icon.chevron}</button>
-          <a class="btn btn-outline-ink" href="#/login">Já tenho acesso: entrar</a>
+          <button class="btn btn-ink" type="submit">Create account ${WW.icon.chevron}</button>
+          <a class="btn btn-outline-ink" href="#/login">I already have access: log in</a>
           ${foot}
         </form>`;
       const form = WW.$("#signupForm", root), err = WW.$("#signupError", root), status = WW.$("#signupStatus", root);
@@ -301,7 +301,7 @@
         if (mark(form, WW.validarCadastro(dados), boxes, err)) return;
         err.textContent = "";
         // Cadastro desativado nesta demonstração: nada é enviado (nenhum POST /register)
-        status.innerHTML = `O cadastro está desativado nesta demonstração. Entre com a conta de demonstração. <a href="#/login">Ir para o login</a>`;
+        status.innerHTML = `Sign-up is disabled in this demo. Log in with the demo account or continue as a guest. <a href="#/login">Go to log in</a>`;
         status.focus();
       });
       return form;

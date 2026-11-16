@@ -33,7 +33,7 @@ test("voltar para Lite funciona e valor inválido é recusado", () => {
   const { WW, storage } = loadModes({ stored: { "ww-mode": "aprofundado" } });
   WW.mode.set("lite");
   assert.equal(storage.get("ww-mode"), "lite");
-  assert.throws(() => WW.mode.set("expert"), /Modo inválido/);
+  assert.throws(() => WW.mode.set("expert"), /Invalid mode/);
   assert.equal(WW.mode.get(), "lite");
 });
 
