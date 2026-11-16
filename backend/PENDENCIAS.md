@@ -33,8 +33,8 @@ What was left for later. When an item is done, delete it here (or mark it `[x]`)
 ## Scope: government account and alerts (waiting for a team decision)
 
 The app has one account, the demo account (`DEMO_USER_*`), plus guest access, and shows no alerts. The
-backend still has what was left from the version with a government role. The frontend uses none of it;
-nothing was removed until the team decides.
+frontend uses neither the government account nor the alerts (checked by grep in `frontend/` on 2026-11-15);
+the code stays in the backend as a base for the future vision and was not removed for the final delivery.
 
 - [ ] Decide whether to remove or keep:
   - the seed government account (`ensure_seed_gov`, `SEED_GOV_*` in `.env` and `config.py`);
@@ -49,20 +49,30 @@ nothing was removed until the team decides.
 ## Security (before publishing the API)
 
 - [x] Change `JWT_SECRET` and `SEED_GOV_PASSWORD` in the local `.env`.
-- [ ] Set `JWT_SECRET`, `SEED_GOV_EMAIL`, `SEED_GOV_PASSWORD` and `CORS_ORIGINS` on the host when publishing.
-- [ ] Set the demo account on the host (`DEMO_USER_NAME`, `DEMO_USER_EMAIL`, `DEMO_USER_PASSWORD`,
-  `DEMO_USER_CITY`), with a strong password. In Next (Vercel): `API_URL`, `DEMO_EMAIL` (same as
-  `DEMO_USER_EMAIL`) and `JWT_EXPIRE_MINUTES` (same as the backend).
+- [x] Security review (login, tokens, CORS), with tests in `tests/test_security.py`: 401 for a missing,
+  malformed, wrongly signed, expired and `alg: none` token; CORS without `*` and no
+  `Access-Control-Allow-Origin` for an unknown origin; login gives the same message for a wrong e-mail or a
+  wrong password; passwords stored with bcrypt.
+- [x] On Render (`RENDER` set), the API does not start with `JWT_SECRET`, `DEMO_USER_PASSWORD` or
+  `SEED_GOV_PASSWORD` empty or set to the example value.
+- [x] Secret scan of the code, the tests and the git history: nothing real. Done with text patterns (gitleaks
+  and trufflehog were not installed); `.env` and `*.db` are in `.gitignore`.
+- [ ] Check the Render dashboard: `JWT_SECRET` and `SEED_GOV_PASSWORD` generated, `DEMO_USER_PASSWORD` strong
+  and different from the test one, `CORS_ORIGINS` with the Vercel URL and no trailing slash. In Next
+  (Vercel): `API_URL`, `DEMO_EMAIL` (same as `DEMO_USER_EMAIL`) and `JWT_EXPIRE_MINUTES` (same as the backend).
 - [ ] Persistent database in the deploy: today the container's SQLite disappears on every deploy (accounts and
   alerts).
-- [ ] Run a security review (login, tokens, CORS).
+- [ ] Run gitleaks or trufflehog on the history when there is time to install them.
 
 ## Small fixes
 
-- [ ] The e-mail of the seed government account (`SEED_GOV_EMAIL`) does not pass the validator. With a
-  reserved domain (e.g. `.test`), the account is created but cannot log in.
-- [ ] `data_maturity` is `null` for scenes of the `NISAR_L2_GCOV_V1` collection, because ASF does not report
-  the maturity.
+- [x] `pytest` passes from a clean install (`pip install -r requirements.txt`).
+- [x] `SEED_GOV_EMAIL` and `DEMO_USER_EMAIL` go through the same validation as the login (`EmailStr`) in
+  `config.py`: a reserved domain (`.test`, `.local`) is refused at startup instead of creating an account
+  that cannot log in.
+- [x] `data_maturity` is `"validated"` for the `NISAR_L2_GCOV_V1` collection (in CMR, "NISAR Validated ...").
+- [x] `frontend/public/data/fallback/` checked against the live API on Render: same content (only
+  `generated_at` differs), no regeneration needed.
 - [ ] Replace `httpx` with `httpx2` in the tests (warning that `httpx` is deprecated in Starlette's
   TestClient).
 

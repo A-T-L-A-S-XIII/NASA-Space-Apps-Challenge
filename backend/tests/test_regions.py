@@ -205,3 +205,47 @@ def test_cenas_limite_invalido(client, monkeypatch):
     r = client.get("/api/regions/vale-do-taquari/scenes?limit=0")
     assert r.status_code == 422
     assert r.json()["detail"] == "Dados inválidos"
+
+
+# Trecho de uma resposta real do ASF (geojson) para a coleção NISAR_L2_GCOV_V1: não traz dataMaturity
+GRANULO_V1 = "NISAR_L2_PR_GCOV_034_103_A_163_4005_DHDH_A_20261031T092224_20261031T092259_P05036_N_F_J_001"
+FEATURE_GCOV_V1 = {
+    "type": "Feature",
+    "geometry": GEOMETRY,
+    "properties": {
+        "sceneName": GRANULO_V1,
+        "fileID": GRANULO_V1,
+        "startTime": "2026-10-31T09:22:24Z",
+        "stopTime": "2026-10-31T09:22:59Z",
+        "processingLevel": "GCOV",
+        "flightDirection": "ASCENDING",
+        "platform": "NISAR",
+        "collectionName": "NISAR_L2_GCOV_V1",
+        "productionConfiguration": "PR",
+        "crid": "P05036",
+        "fileName": f"{GRANULO_V1}.h5",
+        "url": f"https://nisar.asf.earthdatacloud.nasa.gov/NISAR/NISAR_L2_GCOV_V1/{GRANULO_V1}/{GRANULO_V1}.h5",
+    },
+}
+
+
+def test_maturidade_da_colecao_gcov_v1_mockada(client, monkeypatch):
+    """NISAR_L2_GCOV_V1 vem sem dataMaturity: a coleção sem rótulo é a validada."""
+    mock_asf(monkeypatch, lambda request: httpx.Response(
+        200, json={"type": "FeatureCollection", "features": [FEATURE_GCOV_V1]}))
+    r = client.get("/api/regions/vale-do-taquari/scenes?start=2026-10-01&end=2026-11-15")
+    assert r.status_code == 200
+    (cena,) = r.json()["scenes"]
+    assert cena["granule"] == GRANULO_V1
+    assert cena["data_maturity"] == "validated"
+
+
+@pytest.mark.parametrize("colecao,esperado", [
+    ("NISAR_L2_GCOV_V1", "validated"),
+    ("NISAR_L2_GCOV_PROVISIONAL_V1", "provisional"),
+    ("NISAR_L2_GCOV_BETA_V1", "beta"),
+    ("OUTRA_COLECAO_V1", None),  # fora do padrão NISAR: não inventa maturidade
+    ("", None),
+])
+def test_maturidade_pelo_nome_da_colecao(colecao, esperado):
+    assert asf._data_maturity({"collectionName": colecao}) == esperado

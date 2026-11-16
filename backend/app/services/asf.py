@@ -7,6 +7,7 @@ e o campo "error" — a API nunca quebra por causa disso.
 Com OFFLINE_MODE=true, o ASF nem é chamado: só o snapshot.
 """
 
+import re
 import time
 
 import httpx
@@ -72,6 +73,10 @@ def _data_maturity(props: dict):
     for maturity in ["PROVISIONAL", "BETA", "VALIDATED"]:
         if maturity in collection:
             return maturity.lower()
+    # Coleção NISAR sem rótulo no nome (ex.: NISAR_L2_GCOV_V1) é a validada: no CMR ela se chama
+    # "NISAR Validated Geocoded Polarimetric Covariance Product"
+    if re.fullmatch(r"NISAR_L\d_[A-Z0-9]+_V\d+", collection):
+        return "validated"
     return None
 
 

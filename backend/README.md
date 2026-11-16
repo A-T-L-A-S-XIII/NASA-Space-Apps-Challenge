@@ -163,6 +163,8 @@ Then, in the Vercel project, point the frontend to the API URL (e.g. `https://wa
 
 Notes:
 
+- On Render (`RENDER` set), the API **does not start** if `JWT_SECRET`, `DEMO_USER_PASSWORD` or
+  `SEED_GOV_PASSWORD` is empty or the example value (`troque-esta-...`). The log names the missing one.
 - SQLite lives inside the container: **accounts and alerts disappear on every deploy or restart**. The seed
   government account and the sample alerts are created again at startup. To keep real data, use a
   persistent disk (Render *Disks*, Railway *Volumes*) with `DATABASE_URL=sqlite:////dados/water_waltz.db`.

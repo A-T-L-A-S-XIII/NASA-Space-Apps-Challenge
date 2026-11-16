@@ -1,7 +1,8 @@
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-from pydantic import field_validator
+from pydantic import EmailStr, field_validator
 from typing import Annotated
 from pathlib import Path
+import os
 
 
 class Settings(BaseSettings):
@@ -20,14 +21,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
 
-    # Conta governo criada no startup se ainda não existir
+    # Conta governo criada no startup se ainda não existir. Os e-mails das contas semente passam pela mesma
+    # validação do login (EmailStr): um domínio reservado, como .test ou .local, criaria uma conta sem login
     seed_gov_name: str = "Governo RS"
-    seed_gov_email: str = "governo@waterwaltz.dev"
+    seed_gov_email: EmailStr = "governo@waterwaltz.dev"
     seed_gov_password: str = "troque-esta-senha"
 
     # Conta de demonstração (cidadão) criada no startup se ainda não existir: a única que o frontend usa
     demo_user_name: str = "Conta de demonstração"
-    demo_user_email: str = "demo@waterwaltz.dev"
+    demo_user_email: EmailStr = "demo@waterwaltz.dev"
     demo_user_password: str = "troque-esta-senha"
     demo_user_city: str = "Lajeado"  # uma das cidades do Vale do Taquari: o app abre nela
 
@@ -83,3 +85,23 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Valores de exemplo do config.py e do .env.example: servem para rodar local, nunca em produção
+DEFAULT_SECRETS = {"troque-esta-chave", "troque-esta-senha"}
+SECRET_FIELDS = ["jwt_secret", "demo_user_password", "seed_gov_password"]
+
+
+def insecure_secrets(s: Settings) -> list[str]:
+    """Nomes (nunca os valores) das variáveis secretas vazias ou com o valor de exemplo."""
+    return [name.upper() for name in SECRET_FIELDS
+            if (getattr(s, name) or "").strip() in DEFAULT_SECRETS | {""}]
+
+
+def check_production_secrets(s: Settings, environ=os.environ):
+    """No Render (variável RENDER definida), o app não sobe com segredo vazio ou de exemplo."""
+    if not environ.get("RENDER"):
+        return
+    bad = insecure_secrets(s)
+    if bad:
+        raise RuntimeError("Segredo vazio ou com o valor de exemplo no Render: " + ", ".join(bad)
+                           + ". Defina um valor forte no painel do Render.")
