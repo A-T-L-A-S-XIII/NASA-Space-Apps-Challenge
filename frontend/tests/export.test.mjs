@@ -45,7 +45,7 @@ test("nenhum dado do usuário entra no arquivo, em nenhum formato", () => {
     assert.doesNotMatch(content, /"usuario"|"token"|"email"/, fmt);
   }
   const body = JSON.parse(WW.exportData(dados, "json", AGORA).content);
-  assert.match(body.privacidade, /Nenhum dado da sua conta/);
+  assert.match(body.privacidade, /No data from your account/);
 });
 
 test("CSV de passagens: cabeçalho fixo, uma linha por passagem e escape correto", () => {
@@ -65,5 +65,5 @@ test("CSV de polígonos traz centróide, área e município", () => {
 });
 
 test("formato desconhecido é recusado", () => {
-  assert.throws(() => WW.exportData(dados, "xlsx"), /Formato inválido/);
+  assert.throws(() => WW.exportData(dados, "xlsx"), /Invalid format/);
 });

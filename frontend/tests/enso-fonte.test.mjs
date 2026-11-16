@@ -37,11 +37,11 @@ const ENSO = {
 test("etiqueta: um texto para cada origem do dado", () => {
   const WW = loadComponents();
   const t = (o, opts) => (WW.sourceLabel(o, opts) || {}).text;
-  assert.equal(t("nisar"), "Dado NISAR real");
-  assert.equal(t("demo"), "Dado ilustrativo");
-  assert.equal(t("demo", { previsao: true }), "Previsão simulada");
-  assert.equal(t("open-meteo"), "Previsão Open-Meteo");
-  assert.equal(t("local"), "Dado salvo (offline)");
+  assert.equal(t("nisar"), "Real NISAR data");
+  assert.equal(t("demo"), "Illustrative data");
+  assert.equal(t("demo", { previsao: true }), "Simulated forecast");
+  assert.equal(t("open-meteo"), "Open-Meteo forecast");
+  assert.equal(t("local"), "Saved data (offline)");
   assert.equal(WW.sourceLabel("api"), null);
   assert.equal(WW.sourceLabel(undefined), null);
 });
@@ -49,9 +49,9 @@ test("etiqueta: um texto para cada origem do dado", () => {
 test("etiqueta: HTML com classe por tipo, prefixo para leitor de tela e nada sem origem conhecida", () => {
   const WW = loadComponents();
   assert.match(WW.sourceTag("nisar"), /class="src-tag src-real"/);
-  assert.match(WW.sourceTag("nisar"), /<span class="sr-only">Fonte: <\/span>Dado NISAR real/);
+  assert.match(WW.sourceTag("nisar"), /<span class="sr-only">Source: <\/span>Real NISAR data/);
   assert.match(WW.sourceTag("local"), /src-offline/);
-  assert.match(WW.sourceTag("demo", { previsao: true }), /src-demo.*Previsão simulada/);
+  assert.match(WW.sourceTag("demo", { previsao: true }), /src-demo.*Simulated forecast/);
   assert.equal(WW.sourceTag("api"), "");
 });
 
@@ -61,11 +61,11 @@ test("selo: fase e ONI com sinal e vírgula; cor pela fase", () => {
   const nina = WW.ensoBadgeHTML({ fase: "La Niña", oni: -0.62 }, "p1");
   assert.match(nina, /data-fase="la-nina"/);
   assert.match(nina, /La Niña/);
-  assert.match(nina, /ONI −0,6/);
+  assert.match(nina, /ONI −0.6/);
   assert.match(nina, /aria-expanded="false" aria-controls="p1"/);
   assert.match(nina, /id="p1"[^>]*hidden/);
-  assert.match(WW.ensoBadgeHTML({ fase: "El Niño", oni: 1.24 }), /data-fase="el-nino"[\s\S]*ONI \+1,2/);
-  assert.match(WW.ensoBadgeHTML({ fase: "Neutro", oni: 0 }), /data-fase="neutro"[\s\S]*ONI 0,0/);
+  assert.match(WW.ensoBadgeHTML({ fase: "El Niño", oni: 1.24 }), /data-fase="el-nino"[\s\S]*ONI \+1\.2/);
+  assert.match(WW.ensoBadgeHTML({ fase: "Neutro", oni: 0 }), /data-fase="neutro"[\s\S]*ONI 0.0/);
 });
 
 test("selo: sem dado (ou dado incompleto) não mostra nada", () => {
@@ -107,22 +107,26 @@ test("api.enso: depois de falhar, tenta de novo na próxima chamada", async () =
   assert.equal((await api.enso()).fase, "La Niña");
 });
 
-test("api.explicacao: título e resumo do tópico", async () => {
-  const { api, pedidos } = loadApi(async () => resp(200, { id: "la-nina", title: "La Niña", summary: "Resfriamento do Pacífico.", body: "…", icon: "sun" }));
-  assert.deepEqual({ ...(await api.explicacao("la-nina")) }, { titulo: "La Niña", resumo: "Resfriamento do Pacífico." });
-  assert.deepEqual(pedidos, ["/api/explain/la-nina"]);
+test("api.explicacao: El Niño and La Niña in English without a request; other topics come from the API", async () => {
+  const { api, pedidos } = loadApi(async () => resp(200, { id: "radar", title: "Radar", summary: "Como o radar vê.", body: "…", icon: "sun" }));
+  const nina = await api.explicacao("la-nina");
+  assert.equal(nina.titulo, "La Niña");
+  assert.match(nina.resumo, /^Cooling of the Pacific waters/);
+  assert.deepEqual(pedidos, []);
+  assert.deepEqual({ ...(await api.explicacao("radar")) }, { titulo: "Radar", resumo: "Como o radar vê." });
+  assert.deepEqual(pedidos, ["/api/explain/radar"]);
 });
 
 /* ------------------------------------------------------------ visão futura */
 test("notícias: selo de visão futura e nenhuma chamada de rede", () => {
   const js = read("../public/js/components.js");
-  assert.match(js, /Visão futura/);
+  assert.match(js, /Future view/);
   const rail = js.slice(js.indexOf("WW.NewsRail ="), js.indexOf("WW.charts ="));
   assert.doesNotMatch(rail, /WW\.api|fetch/);
 });
 
 test("explorar: fora do Vale do Taquari aparece 'Em breve'", () => {
   const js = read("../public/js/explore.js");
-  assert.match(js, /Em breve: piloto no Vale do Taquari/);
+  assert.match(js, /Coming soon: pilot in the Vale do Taquari/);
   assert.doesNotMatch(js, /Fora da sua região/);
 });

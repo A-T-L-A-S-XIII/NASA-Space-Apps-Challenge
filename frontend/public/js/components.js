@@ -14,7 +14,7 @@ window.WW = window.WW || {};
   WW.reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   WW.clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   WW.lerp = (a, b, t) => a + (b - a) * t;
-  WW.fmt = (n, d = 0) => Number(n).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  WW.fmt = (n, d = 0) => Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 
   /* Gerador pseudoaleatório determinístico (dados simulados estáveis por id) */
   WW.rng = function (seed) {
@@ -77,22 +77,22 @@ window.WW = window.WW || {};
     const dark = `<img class="logo logo--on-dark" src="assets/img/logo-on-dark.webp" width="1389" height="226" alt="Water Waltz" decoding="async">`;
     const light = `<img class="logo logo--on-light" src="assets/img/logo-on-light.webp" width="1360" height="225" alt="Water Waltz" decoding="async">`;
     const imgs = variant === "dark" ? dark : variant === "light" ? light : dark + light;
-    return `<a class="brand brand--${variant}" href="${href}" aria-label="Water Waltz — início">${imgs}</a>`;
+    return `<a class="brand brand--${variant}" href="${href}" aria-label="Water Waltz — home">${imgs}</a>`;
   };
 
   /* ------------------------------------------------------- etiqueta da fonte */
   /* Diz de onde vem o dado de cada card. origem: "nisar", "demo", "open-meteo" ou "local" (plano B). */
   WW.sourceLabel = function (origem, { previsao = false } = {}) {
-    if (origem === "nisar") return { kind: "real", text: "Dado NISAR real" };
-    if (origem === "demo") return previsao ? { kind: "demo", text: "Previsão simulada" } : { kind: "demo", text: "Dado ilustrativo" };
-    if (origem === "open-meteo") return { kind: "open", text: "Previsão Open-Meteo" };
-    if (origem === "sentinel-1") return { kind: "real", text: "Dado Sentinel-1 real" };
-    if (origem === "local") return { kind: "offline", text: "Dado salvo (offline)" };
+    if (origem === "nisar") return { kind: "real", text: "Real NISAR data" };
+    if (origem === "demo") return previsao ? { kind: "demo", text: "Simulated forecast" } : { kind: "demo", text: "Illustrative data" };
+    if (origem === "open-meteo") return { kind: "open", text: "Open-Meteo forecast" };
+    if (origem === "sentinel-1") return { kind: "real", text: "Real Sentinel-1 data" };
+    if (origem === "local") return { kind: "offline", text: "Saved data (offline)" };
     return null;
   };
   WW.sourceTag = function (origem, opts) {
     const l = WW.sourceLabel(origem, opts);
-    return l ? `<span class="src-tag src-${l.kind}"><span class="sr-only">Fonte: </span>${WW.esc(l.text)}</span>` : "";
+    return l ? `<span class="src-tag src-${l.kind}"><span class="sr-only">Source: </span>${WW.esc(l.text)}</span>` : "";
   };
 
   /* ------------------------------------------------------------ selo ENSO */
@@ -104,10 +104,10 @@ window.WW = window.WW || {};
     if (!e || !FASES[e.fase] || typeof e.oni !== "number") return "";
     return `<div class="enso" data-fase="${FASES[e.fase]}">
       <button class="enso-btn" type="button" aria-expanded="false" aria-controls="${id}">
-        <span class="enso-dot" aria-hidden="true"></span><span class="sr-only">Pacífico agora: </span>${WW.esc(e.fase)}
+        <span class="enso-dot" aria-hidden="true"></span><span class="sr-only">Pacific now: </span>${WW.esc(e.fase)}
         <span class="enso-oni">ONI ${WW.fmtOni(e.oni)}</span>
       </button>
-      <div class="enso-panel" id="${id}" role="group" aria-label="Sobre o El Niño e a La Niña" hidden></div>
+      <div class="enso-panel" id="${id}" role="group" aria-label="About El Niño and La Niña" hidden></div>
     </div>`;
   };
   // Monta o selo em `el` quando o dado chega; enquanto isso (ou sem dado) el fica vazio
@@ -119,18 +119,18 @@ window.WW = window.WW || {};
       const box = el.firstElementChild, btn = box.querySelector(".enso-btn"), panel = box.querySelector(".enso-panel");
       const topico = e.fase === "La Niña" ? "la-nina" : "el-nino";
       let loaded = false;
-      const nota = `ONI ${WW.fmtOni(e.oni)} °C na estação ${WW.esc(e.estacao)} · NOAA CPC${e.live ? "" : ` · dado salvo${e.data_snapshot ? " em " + WW.esc(e.data_snapshot) : ""}`}`;
+      const nota = `ONI ${WW.fmtOni(e.oni)} °C in season ${WW.esc(e.estacao)} · NOAA CPC${e.live ? "" : ` · saved data${e.data_snapshot ? " from " + WW.esc(e.data_snapshot) : ""}`}`;
       async function load() {
         loaded = true;
-        panel.innerHTML = `<p class="enso-note">Carregando…</p>`;
+        panel.innerHTML = `<p class="enso-note">Loading…</p>`;
         try {
           const x = await WW.api.explicacao(topico);
           panel.innerHTML = `<b class="enso-title">${WW.esc(x.titulo)}</b><p class="enso-text">${WW.esc(x.resumo)}</p>
-            ${e.fase === "Neutro" ? `<p class="enso-text">Agora o Pacífico está neutro: nem El Niño, nem La Niña.</p>` : ""}
+            ${e.fase === "Neutro" ? `<p class="enso-text">The Pacific is neutral now: neither El Niño nor La Niña.</p>` : ""}
             <p class="enso-note">${nota}</p>`;
         } catch (err) {
           loaded = false;
-          panel.innerHTML = `<p class="enso-note">Não foi possível carregar a explicação agora.<br>${nota}</p>`;
+          panel.innerHTML = `<p class="enso-note">Could not load the explanation now.<br>${nota}</p>`;
         }
       }
       const toggle = (open) => {
@@ -194,7 +194,7 @@ window.WW = window.WW || {};
               <span class="chip chip-accent"><span class="dot"></span>${WW.esc(kicker)}</span>
               <h2 id="mdl-t">${WW.esc(title)}</h2>
               <p id="mdl-d">${body}</p>
-              ${path.length ? `<div class="path" aria-label="Escala de navegação">${crumbs}</div>` : ""}
+              ${path.length ? `<div class="path" aria-label="Navigation scale">${crumbs}</div>` : ""}
               <div class="modal-actions">
                 <button class="btn btn-ghost" data-act="no">${WW.esc(cancelLabel)}</button>
                 <button class="btn btn-primary" data-act="yes">${WW.esc(confirmLabel)} ${WW.icon.chevron}</button>
@@ -260,13 +260,13 @@ window.WW = window.WW || {};
     const mine = items.filter((n) => n.region === loc.region);
     el.innerHTML = `
       <div class="rail-head">
-        <div class="rail-title"><h2>Notícias locais</h2><span class="chip chip-accent rail-future">Visão futura</span></div>
+        <div class="rail-title"><h2>Local news</h2><span class="chip chip-accent rail-future">Future view</span></div>
         <div class="rail-loc">${WW.icon.pin}<span>${WW.esc(loc.regionName)}<br><span style="color:var(--text-faint)">${WW.esc(loc.municipalityName)} · ${WW.esc(loc.stateUF)}</span></span></div>
       </div>
-      <div class="rail-list scroll" role="feed" aria-label="Notícias de ${WW.esc(loc.regionName)}">
-        ${mine.length ? mine.map((n, i) => WW.newsItem(n, { thumb: i < 2 })).join("") : `<p class="rail-empty">Sem notícias da sua região agora.</p>`}
+      <div class="rail-list scroll" role="feed" aria-label="News from ${WW.esc(loc.regionName)}">
+        ${mine.length ? mine.map((n, i) => WW.newsItem(n, { thumb: i < 2 })).join("") : `<p class="rail-empty">No news from your region right now.</p>`}
       </div>
-      <div class="rail-foot">Visão futura: notícias de exemplo, escritas para o protótipo. Ainda não há fonte ao vivo. <span class="badge-demo">exemplo</span></div>`;
+      <div class="rail-foot">Future view: sample news written for the prototype. There is no live source yet. <span class="badge-demo">sample</span></div>`;
     return { count: mine.length };
   };
 
@@ -280,7 +280,7 @@ window.WW = window.WW || {};
         return `<rect class="bar ${v === max ? "hi" : ""}" x="${i * bw + 2}" y="${h - 16 - bh}" width="${bw - 4}" height="${Math.max(bh, 1)}" rx="3"><title>${labels[i] || ""}: ${WW.fmt(v, 1)} mm</title></rect>`;
       }).join("");
       const ticks = labels.map((l, i) => (i % 3 === 0 ? `<text x="${i * bw + bw / 2}" y="${h - 2}" text-anchor="middle">${l}</text>` : "")).join("");
-      return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Precipitação diária">${bars}<line class="axis" x1="0" x2="${w}" y1="${h - 16}" y2="${h - 16}"/>${ticks}</svg>`;
+      return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Daily precipitation">${bars}<line class="axis" x1="0" x2="${w}" y1="${h - 16}" y2="${h - 16}"/>${ticks}</svg>`;
     },
     /* Perfil de elevação com o rio no ponto mais baixo */
     profile(points, { w = 320, h = 120 } = {}) {
@@ -290,7 +290,7 @@ window.WW = window.WW || {};
       const d = points.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
       const low = points.indexOf(min);
       const waterY = y(min + (max - min) * 0.12);
-      return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Perfil de elevação">
+      return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Elevation profile">
         <defs><linearGradient id="terrainGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--terrain)" stop-opacity=".45"/><stop offset="1" stop-color="var(--terrain)" stop-opacity="0"/></linearGradient></defs>
         <path class="area" d="${d}L${w},${h - 18}L0,${h - 18}Z"/>
         <rect class="river" x="${x(Math.max(low - 2, 0))}" y="${waterY}" width="${x(4)}" height="${y(min) - waterY + 1}" rx="2"/>
@@ -302,7 +302,7 @@ window.WW = window.WW || {};
     /* Linha do tempo das passagens do radar: água observada sim/não */
     passes(list, { w = 320, h = 54 } = {}) {
       const step = w / list.length;
-      const dots = list.map((p, i) => `<circle class="${p.water ? "obs-yes" : "obs-no"}" cx="${i * step + step / 2}" cy="18" r="${p.water ? 6 : 5}"><title>${p.date}: ${p.water ? "água observada" : "sem água observada"}</title></circle>`).join("");
+      const dots = list.map((p, i) => `<circle class="${p.water ? "obs-yes" : "obs-no"}" cx="${i * step + step / 2}" cy="18" r="${p.water ? 6 : 5}"><title>${p.date}: ${p.water ? "water observed" : "no water observed"}</title></circle>`).join("");
       const ticks = list.map((p, i) => (i % 2 === 0 ? `<text x="${i * step + step / 2}" y="${h - 4}" text-anchor="middle">${p.date}</text>` : "")).join("");
       return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Passagens do radar">${dots}${ticks}</svg>`;
     },
