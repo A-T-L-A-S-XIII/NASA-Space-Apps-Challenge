@@ -53,4 +53,4 @@ Locality list and boundaries: *[to choose — D-10]*.
 
 ## Reproducing the demo data
 
-Raw products go to `data/raw/` (git-ignored). The README explains how to obtain them; `data/demo/manifest.json` lists the SHA-256 of every demo file, checked by `python pipeline/validate_demo.py`.
+Raw products go to `data/raw/` (git-ignored). The README explains how to obtain them. The demo serves the 19 processed NISAR passes in `Fotos/nisar_taquari_50/`; `python pipeline/validate_demo.py` checks that the catalogue, every pass folder and the IBGE mesh are present and that no DEV FIXTURE reached them or `frontend/public/`. The older radar routes read `data/demo/` (not in the repository); when it exists, its `manifest.json` SHA-256 list is checked too.
