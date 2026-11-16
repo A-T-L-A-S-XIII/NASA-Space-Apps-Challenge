@@ -78,7 +78,7 @@ Open http://localhost:3000 and log in with `DEMO_USER_EMAIL` / `DEMO_USER_PASSWO
 Without internet, start FastAPI with `OFFLINE_MODE=true`: ASF and NOAA answers come from
 `backend/app/data/snapshots/` (refresh them with `python scripts/snapshot.py` from `backend/`).
 
-Tests: `cd backend && python -m pytest` and `cd frontend && npm test`.
+Tests: `cd backend && pip install -r requirements.txt && python -m pytest` and `cd frontend && npm test`.
 
 ### Deploy
 

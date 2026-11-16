@@ -31,8 +31,8 @@ uvicorn app.main:app --reload
 ## Testes
 
 ```bash
-pip install -r ../pipeline/requirements.txt   # o conftest gera os fixtures com pillow
-pytest
+pip install -r requirements.txt
+python -m pytest
 ```
 
 Os testes não usam a internet: ASF e NOAA são trocados por respostas falsas (`httpx.MockTransport`).

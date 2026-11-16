@@ -11,4 +11,6 @@ numpy==2.5.3
 shapely==2.2.0
 pyproj==3.8.0
 httpx==0.28.1
+# Os testes geram data/fixtures com pipeline/make_dev_fixtures.py, que usa o Pillow.
+pillow==12.3.0
 pytest==9.1.1
