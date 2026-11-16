@@ -58,5 +58,6 @@ sobrou da versão com governo. O frontend não usa nada disso; nada foi removido
 - [x] Backend integrado ao projeto (branch `teste-agente`, PR #1, já mergeado).
 - [x] Branch `integracao-mockup` (login pela ponte do Next, conta demo, cadastro desativado): mergeada no PR #18.
 - [x] PR #10 (branch `backend` → `main`) e PRs #11 a #15 mergeados.
-- [ ] Fechar os PRs #16 e #17: o mockup do #17 entrou pelo #18.
-- [ ] Depois dos merges, apagar as branches `nisar-import` (dividida nos PRs #11 a #15) e `teste-agente`.
+- [x] PRs #16 e #17 fechados: o mockup do #17 entrou pelo #18.
+- [x] Branch `teste-agente` apagada.
+- [ ] Apagar a branch `nisar-import` (dividida nos PRs #11 a #15).

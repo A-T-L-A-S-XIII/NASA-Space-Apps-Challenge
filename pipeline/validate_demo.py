@@ -23,23 +23,31 @@ from common import REPO, sha256
 FIXTURE_MARKERS = ("DEV FIXTURE", "DEV-FIXTURE", '"fixture": true', '"fixture":true')
 
 
+def show(p: Path) -> str:
+    # paths given by --passes-dir/--data-dir/--static may be outside the repository
+    try:
+        return str(p.relative_to(REPO))
+    except ValueError:
+        return str(p)
+
+
 def scan_for_fixtures(root: Path, errors: list[str]) -> None:
     for p in root.rglob("*"):
         if p.is_file() and p.suffix in (".json", ".geojson", ".csv"):
             text = p.read_text(encoding="utf-8", errors="replace")
             for m in FIXTURE_MARKERS:
                 if m in text:
-                    errors.append(f"fixture marker {m!r} in {p.relative_to(REPO)}")
+                    errors.append(f"fixture marker {m!r} in {show(p)}")
                     break
         elif p.is_file() and p.suffix == ".png":
             if b"DEV FIXTURE" in p.read_bytes():
-                errors.append(f"fixture marker in {p.relative_to(REPO)}")
+                errors.append(f"fixture marker in {show(p)}")
 
 
 def check_demo(root: Path, errors: list[str]) -> None:
     mf = root / "manifest.json"
     if not mf.is_file():
-        errors.append(f"missing {mf.relative_to(REPO)}")
+        errors.append(f"missing {show(mf)}")
         return
     manifest = json.loads(mf.read_text(encoding="utf-8"))
     if manifest.get("fixture") is not False:
@@ -79,7 +87,7 @@ PASS_FILES = ("area_cheia_seca.geojson", "dados.json", "miniatura.png", "slide.p
 def check_passes(root: Path, errors: list[str]) -> None:
     cat = root / "catalogo.json"
     if not cat.is_file():
-        errors.append(f"missing {cat.relative_to(REPO)}")
+        errors.append(f"missing {show(cat)}")
         return
     passes = json.loads(cat.read_text(encoding="utf-8"))
     if not isinstance(passes, list) or len(passes) < 2:
@@ -95,7 +103,7 @@ def check_passes(root: Path, errors: list[str]) -> None:
         folder = root / f"img_{p['n']:02d}_{p['data']}"
         for f in PASS_FILES:
             if not (folder / f).is_file():
-                errors.append(f"missing {folder.relative_to(REPO)}/{f}")
+                errors.append(f"missing {show(folder)}/{f}")
     if len({p.get("granulo") for p in passes}) != len(passes):
         errors.append("the same NISAR granule appears as more than one pass")
     if len({p.get("data") for p in passes}) < 2:
@@ -104,10 +112,10 @@ def check_passes(root: Path, errors: list[str]) -> None:
 
 def check_mesh(path: Path, errors: list[str]) -> None:
     if not path.is_file():
-        errors.append(f"missing {path.relative_to(REPO)}")
+        errors.append(f"missing {show(path)}")
         return
     if not json.loads(path.read_text(encoding="utf-8")).get("features"):
-        errors.append(f"{path.relative_to(REPO)} has no features")
+        errors.append(f"{show(path)} has no features")
 
 
 def main() -> int:
