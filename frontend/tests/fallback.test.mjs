@@ -43,7 +43,7 @@ test("API fora do ar (502): passagens vêm do plano B, com origem local e aviso 
   }
   assert.match(p.imagens.radar, /^data\/fallback\/nisar\/img_\d{2}_2026-07-\d{2}\/miniatura\.png$/);
   assert.equal(avisos.length, 1);
-  assert.match(avisos[0], /plano B/);
+  assert.match(avisos[0], /fallback/);
   assert.ok(pedidos.every((u) => !/^https?:/.test(u)), "só caminhos relativos");
 });
 
@@ -79,7 +79,7 @@ test("404 e login não caem no plano B; previsão fora do ar dá erro claro", as
   const { api, avisos } = loadApi(async (url) => (url.includes("/forecast") ? resposta(504, "")
     : resposta(404, JSON.stringify({ detail: "Passagem 99 não encontrada" }))));
   await assert.rejects(api.get("/api/nisar/passagens/99/geojson"), { status: 404, message: "Passagem 99 não encontrada" });
-  await assert.rejects(api.get("/api/previsao"), { status: 504, message: /fora do ar \(erro 504\)/ });
+  await assert.rejects(api.get("/api/previsao"), { status: 504, message: /down \(error 504\)/ });
   assert.equal(avisos.length, 0);
   const fora = loadApi(semRede);
   await assert.rejects(fora.api.login("a@b.c", "x"), { status: 0 });
@@ -128,7 +128,7 @@ test("previsão: com a API sem dias (429 da Open-Meteo no Render), o navegador c
   // api.js roda em outro contexto (vm): compara pelo JSON, não pelo protótipo
   assert.deepEqual(JSON.parse(JSON.stringify(f.dias[0])), { data: "2026-11-15", chuva_mm: 14.2, prob_chuva: 90, tmin: 18, tmax: 26 });
   assert.equal(f.chuva_total_mm, 14.6);
-  assert.equal(f.frase, "Chuva prevista de 14,6 mm nos próximos 2 dias, mais forte em 15/11.");
+  assert.equal(f.frase, "14.6 mm of rain forecast for the next 2 days, heaviest on 15 Nov.");
   assert.match(pedidos[1], /latitude=-29.42&longitude=-51.93&.*forecast_days=7/);
 });
 

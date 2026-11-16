@@ -45,7 +45,7 @@
       return current;
     },
     set(m) {
-      if (!MODES.includes(m)) throw new Error(`Modo inválido: ${m}`);
+      if (!MODES.includes(m)) throw new Error(`Invalid mode: ${m}`);
       const changed = m !== WW.mode.get();
       current = m;
       store.set(WW.mode.KEY, m);
@@ -57,9 +57,9 @@
     /* Seletor simples (segmentado) para a topbar */
     selector() {
       const m = WW.mode.get();
-      return `<div class="mode-switch" role="radiogroup" aria-label="Modo de dados">
-        <button type="button" role="radio" data-mode="lite" aria-checked="${m === "lite"}" title="Interface atual, para o dia a dia">Lite</button>
-        <button type="button" role="radio" data-mode="aprofundado" aria-checked="${m === "aprofundado"}" title="Interface técnica, com mais dados, para estudos">Aprofundado</button>
+      return `<div class="mode-switch" role="radiogroup" aria-label="Data mode">
+        <button type="button" role="radio" data-mode="lite" aria-checked="${m === "lite"}" title="Everyday interface">Lite</button>
+        <button type="button" role="radio" data-mode="aprofundado" aria-checked="${m === "aprofundado"}" title="Technical interface, with more data, for studies">In-depth</button>
       </div>`;
     },
     bind(root) {
@@ -83,7 +83,7 @@
 
   /* --------------------------------------------------------------- exportação */
   const FONTE = "NASA/ISRO NISAR via ASF DAAC · processamento Water Waltz";
-  const AVISO = "Indicador de mudança de água pelo radar; não é um mapa de inundação validado.";
+  const AVISO = "Candidate water-change indicator from radar — not a validated flood map.";
   const csvCell = (v) => {
     if (v == null) return "";
     const s = typeof v === "number" ? String(v) : String(v);
@@ -111,7 +111,7 @@
     if (formato === "csv-poligonos") {
       return { filename: `water-waltz_poligonos_${tag}.csv`, mime: "text/csv;charset=utf-8", content: toCSV(POLY_COLS, poligonos) };
     }
-    if (formato !== "json") throw new Error(`Formato inválido: ${formato}`);
+    if (formato !== "json") throw new Error(`Invalid format: ${formato}`);
     const municipios = (d.municipios || []).map((m) => ({ id: m.id, nome: m.nome, cheia_km2: m.cheia_km2, seca_km2: m.seca_km2, toca_area_coberta: m.toca_area_coberta }));
     const meta = d.metadados || {};
     const body = {
@@ -122,9 +122,9 @@
       fonte: FONTE,
       aviso: AVISO,
       citacao: `Water Waltz (2026). Passagens NISAR processadas sobre o Vale do Taquari. Dados: ${FONTE}.`,
-      privacidade: "Este arquivo contém só dados públicos do radar. Nenhum dado da sua conta (nome, e-mail, buscas ou token) é incluído.",
+      privacidade: "This file holds only public radar data. No data from your account (name, e-mail, searches or token) is included.",
       crs: "EPSG:4326 (WGS 84, graus)",
-      unidades: { area: "km² (polígonos em m²)", coordenadas: "graus decimais" },
+      unidades: { area: "km² (polygons in m²)", coordenadas: "decimal degrees" },
       metadados: {
         satelite: meta.satelite, produto: meta.produto, banda: meta.banda, polarizacao: meta.polarizacao,
         area_coberta: meta.area_coberta, trilhas: meta.trilhas, janela_da_enchente: meta.janela_da_enchente,

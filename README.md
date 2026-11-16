@@ -2,22 +2,22 @@
 
 NASA Space Apps 2026 · Challenge "Dancing with the SARs" · Local Event: Goiânia
 
-**Live demo:** https://nasa-space-apps-challenge-two.vercel.app (no account needed: choose **"Entrar como visitante"** on the login card). The API is on Render's free plan: the first visit after 15 minutes idle can take about a minute.
+**Live demo:** https://nasa-space-apps-challenge-two.vercel.app (no account needed: choose **"Continue as guest"** on the login card). The API is on Render's free plan: the first visit after 15 minutes idle can take about a minute.
 
 ![Taquari Valley screen: map of the area observed by NISAR and the simulated rain scenario card](docs/img/app-vale-cenario.png)
 
-The **"Cenário · e se chover assim?"** card is a simulation, labelled "Simulado" on screen: it combines the live 7-day rain forecast (Open-Meteo) with the water NISAR saw near the town in July 2026 to show how the app would warn people. Its thresholds (30 and 80 mm in 7 days) are for demonstration and are not calibrated; it is not a flood forecast.
+The **"Scenario · what if it rains like this?"** card is a simulation, labelled "Simulated" on screen: it combines the live 7-day rain forecast (Open-Meteo) with the water NISAR saw near the town in July 2026 to show how the app would warn people. Its thresholds (30 and 80 mm in 7 days) are for demonstration and are not calibrated; it is not a flood forecast.
 
-> **Prototype.** The Taquari Valley screens show the 19 processed NISAR passes; the globe and the region drill-down use simulated values, labelled "simulado" on screen.
+> **Prototype.** The Taquari Valley screens show the 19 processed NISAR passes; the globe and the region drill-down use simulated values, labelled "simulated" on screen.
 > Candidate water-change indicator — not a validated flood map. Not for evacuation or route decisions.
 
 ## The idea
 
-In recent floods in the Taquari Valley (RS, Brazil), many people were affected without water at their door: the road or bridge to their town was cut. We use **NISAR** radar images to show where water was observed over time. In the app, a resident searches a town or neighbourhood, saves it as "Minha casa" (kept only in their browser) and sees:
+In recent floods in the Taquari Valley (RS, Brazil), many people were affected without water at their door: the road or bridge to their town was cut. We use **NISAR** radar images to show where water was observed over time. In the app, a resident searches a town or neighbourhood, saves it as "My home" (kept only in their browser) and sees:
 
 - how far the nearest new water seen by the radar was;
 - in how many of the 19 NISAR passes (June to October 2026) the radar saw new water within 3 km;
-- whether that area floods often: the **Sentinel-1** history since 2015 ("recorrente ou pontual?").
+- whether that area floods often: the **Sentinel-1** history since 2015 ("recurrent or one-off?").
 
 The rain scenario card adds a **simulated** warning (see above). Everything else only shows what the radar observed. It is not a flood forecast.
 
@@ -49,7 +49,7 @@ NISAR L2 GCOV, the source of the water seen in 2026. A search of NASA's catalogu
 
 ## Other data
 
-- **Sentinel-1 (ESA Copernicus):** C-band VV history, 471 passes of relative orbit 24 from 2015 to 2026, processed with `backend/scripts/process_sentinel1.py` (Google Earth Engine). Used only for the "recorrente ou pontual?" history, never for the 2026 water.
+- **Sentinel-1 (ESA Copernicus):** C-band VV history, 471 passes of relative orbit 24 from 2015 to 2026, processed with `backend/scripts/process_sentinel1.py` (Google Earth Engine). Used only for the "recurrent or one-off?" history, never for the 2026 water.
 - **Weather forecast:** Open-Meteo, 7 days, read live. Weather only, not a flood forecast.
 - **ENSO:** NOAA CPC Oceanic Niño Index, context only, never shown as the cause of a flood.
 
@@ -126,7 +126,7 @@ See [docs/METHOD.md](docs/METHOD.md). In short: smooth water looks dark to radar
 - **Rain scenario:** its thresholds are for demonstration and were not calibrated against past floods.
 - **Flooded vegetation:** needs HV polarisation; the processed scenes are HH only.
 - **Accounts:** one demo account and guest access; sign-up is disabled because the free hosting does not keep the database between deploys.
-- The globe and the "Explorar dados" drill-down use simulated values, labelled "simulado" on screen.
+- The globe and the "Explore data" drill-down use simulated values, labelled "simulated" on screen.
 
 ## Future work
 

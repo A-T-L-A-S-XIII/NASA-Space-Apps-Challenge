@@ -20,20 +20,31 @@
   const TIMEOUT_MS = 6000;
   const FALLBACK = "data/fallback/";
   const MES_PADRAO = "2026-07";
-  const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
+  const MESES = ["January", "February", "March", "April", "May", "June", "July",
     "agosto", "setembro", "outubro", "novembro", "dezembro"];
   // Textos fixos do processamento (a API não tem rota de metadados)
   const LOCAL = "Vale do Taquari (RS) · trecho entre Muçum e Lajeado";
-  const TRECHO = "no trecho do rio Taquari entre Muçum e Lajeado";
-  const AVISO_TRILHA = "A área de água muda com a trilha do satélite: compare só datas da mesma trilha.";
-  const CLASSES = { cheia: "água fora do normal", seca: "falta de água em relação ao normal" };
+  const TRECHO = "on the stretch of the Taquari river between Muçum and Lajeado";
+  const AVISO_TRILHA = "The water area changes with the satellite track: compare only dates from the same track.";
+  const CLASSES = { cheia: "water above normal", seca: "less water than normal" };
   const VEGETACAO_ALAGADA = {
     disponivel: false,
-    motivo: "As cenas processadas têm só a polarização HH. Para separar vegetação alagada "
-      + "é preciso a polarização HV (ou a razão HH/HV) e um novo processamento.",
-    requer: "Reprocessar as cenas GCOV com HH+HV e criar a rota /api/nisar/vegetacao-alagada.",
+    motivo: "The processed scenes have only HH polarisation. Separating flooded vegetation "
+      + "needs HV polarisation (or the HH/HV ratio) and new processing.",
+    requer: "Reprocess the GCOV scenes with HH+HV and add a flooded-vegetation route to the API.",
   };
   const FONTE_LUGAR = { ibge: "IBGE", osm: "OpenStreetMap (Nominatim)" };
+  // Texts the API sends in Portuguese, written here in English from the same sources
+  const CUIDADOS = [
+    "The water area depends on the track (orbit): compare only dates from the same track.",
+    "The processed area runs from Muçum to Lajeado and takes part of Estrela; Bom Retiro do Sul and Taquari are left out.",
+    "Candidate water-change indicator from radar — not a validated flood map. Not for evacuation or route decisions.",
+  ];
+  const METODO_MUNICIPIO = "Each above- or below-normal polygon is added to the municipality that contains its centre (IBGE municipal mesh). The processed area covers only part of each municipality.";
+  const EXPLICA = {
+    "el-nino": { titulo: "El Niño", resumo: "Warming of the Pacific Ocean waters that, on average, brings more rain to southern Brazil. It is a tendency, not a rule: the app shows El Niño and the water side by side, but does not say that a specific flood was caused by it." },
+    "la-nina": { titulo: "La Niña", resumo: "Cooling of the Pacific waters, linked to less rain and to droughts in Rio Grande do Sul. Like El Niño, it is a tendency and does not decide alone what happens in each place." },
+  };
 
   const cache = new Map();   // respostas já convertidas, por caminho pedido pela tela
   const cargas = new Map();  // respostas da API (ou do plano B), por rota
@@ -58,17 +69,17 @@
       r = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: ctrl.signal });
       data = await r.json().catch(() => null);
     } catch (e) {
-      throw new ApiError(e && e.name === "AbortError" ? `A API não respondeu em ${TIMEOUT_MS / 1000} s.`
-        : "Não foi possível falar com a API.", 0);
+      throw new ApiError(e && e.name === "AbortError" ? `The API did not answer within ${TIMEOUT_MS / 1000} s.`
+        : "Could not reach the API.", 0);
     } finally {
       clearTimeout(timer);
     }
     if (!r.ok) {
       const detail = data && typeof data.detail === "string" ? data.detail : null;
       // 500/502/504 sem "detail" vêm do Next.js quando o FastAPI não responde
-      throw new ApiError(detail || (r.status >= 500 ? `A API está fora do ar (erro ${r.status}).` : `Erro ${r.status} da API.`), r.status, data);
+      throw new ApiError(detail || (r.status >= 500 ? `The API is down (error ${r.status}).` : `API error ${r.status}.`), r.status, data);
     }
-    if (data === null) throw new ApiError("A API devolveu uma resposta que não é JSON.", r.status);
+    if (data === null) throw new ApiError("The API returned a response that is not JSON.", r.status);
     return data;
   }
 
@@ -82,7 +93,7 @@
       if (!planoB || !foraDoAr(e)) throw e;
       try {
         const data = typeof planoB === "function" ? await planoB() : await request(FALLBACK + planoB);
-        console.warn(`[WW.api] ${path} falhou: ${e.message} Usando os dados locais do plano B.`);
+        console.warn(`[WW.api] ${path} failed: ${e.message} Using the saved local data (fallback).`);
         return { data, local: true };
       } catch (e2) {
         throw e;
@@ -99,9 +110,10 @@
 
   /* ------------------------------------------------------------- conversão */
   const origem = (d, local) => (local ? "local" : (d && d.source) || "api");
-  const nomeMes = (ym) => { const [a, m] = ym.split("-"); return `${MESES[+m - 1]} de ${a}`; };
-  const dataBR = (iso) => { const [, m, d] = iso.split("-"); return `${d}/${m}`; };
-  const fmtKm2 = (v) => v.toFixed(1).replace(".", ",") + " km²";
+  const nomeMes = (ym) => { const [a, m] = ym.split("-"); return `${MESES[+m - 1]} ${a}`; };
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dataBR = (iso) => { const [, m, d] = iso.split("-"); return `${+d} ${MON[+m - 1]}`; };
+  const fmtKm2 = (v) => v.toFixed(1) + " km²";
   const r1 = (v) => Math.round(v * 10) / 10;
   const cobertura = ([oeste, sul, leste, norte]) => ({ oeste, sul, leste, norte });
   // No plano B as imagens também são locais
@@ -145,7 +157,7 @@
     const nome = nomeMes(mes);
     if (!ps.length) {
       return { mes, mes_nome: nome, passagens: 0, nivel: "sem_dados",
-        frase: `O radar não passou ${TRECHO} em ${nome}, então não há como dizer se alagou.`,
+        frase: `The radar did not pass ${TRECHO} in ${nome}, so there is no way to tell whether it flooded.`,
         cheia_km2: null, seca_km2: null, por_trilha: [], datas: [], origem: org };
     }
     const cheia = r1(ps.reduce((s, p) => s + p.cheia_km2, 0));
@@ -154,16 +166,16 @@
     let nivel, frase;
     if (cheia === 0) {
       nivel = "normal";
-      frase = `Em ${nome}, o radar passou ${ps.length} vezes ${TRECHO} e não viu água fora do normal. O rio ficou no leito de sempre.`;
+      frase = `In ${nome}, the radar passed ${ps.length} times ${TRECHO} and saw no water above normal. The river stayed in its usual bed.`;
     } else if (cheia < 1) {
       nivel = "normal";
-      frase = `Em ${nome}, o radar passou ${ps.length} vezes ${TRECHO} e quase não viu água fora do normal: ${fmtKm2(cheia)} no mês, a maior parte em ${dataBR(pico.data)}. Nada parecido com uma enchente.`;
+      frase = `In ${nome}, the radar passed ${ps.length} times ${TRECHO} and saw almost no water above normal: ${fmtKm2(cheia)} in the month, most of it on ${dataBR(pico.data)}. Nothing like a flood.`;
     } else if (cheia < 5) {
       nivel = "atencao";
-      frase = `Em ${nome}, o radar viu ${fmtKm2(cheia)} de água fora do normal ${TRECHO}, mais em ${dataBR(pico.data)}. É pouco, mas vale acompanhar.`;
+      frase = `In ${nome}, the radar saw ${fmtKm2(cheia)} of water above normal ${TRECHO}, mostly on ${dataBR(pico.data)}. It is little, but worth watching.`;
     } else {
       nivel = "alagamento";
-      frase = `Em ${nome}, o radar viu ${fmtKm2(cheia)} de água fora do normal ${TRECHO}. O pior momento foi em ${dataBR(pico.data)}.`;
+      frase = `In ${nome}, the radar saw ${fmtKm2(cheia)} of water above normal ${TRECHO}. The worst moment was on ${dataBR(pico.data)}.`;
     }
     const por_trilha = [...new Set(ps.map((p) => p.trilha))].sort().map((t) => {
       const v = ps.filter((p) => p.trilha === t).map((p) => p.agua_km2);
@@ -181,7 +193,8 @@
     const [{ itens: ps, area_coberta, origem: org }, ev, malha] = await Promise.all([
       passagens(null), loadEvento(), loadMalha().catch(() => null)]);
     const prov = ev.data.provenance;
-    const [produto, banda] = prov.product.split(", banda ");
+    const [, banda] = prov.product.split(", banda ");
+    const produto = "L2 GCOV (geocoded backscatter)";
     const trilhas = [];
     for (const p of ps) {
       let t = trilhas.find((x) => x.trilha === p.trilha);
@@ -196,8 +209,8 @@
       fonte: prov.data_source, local: LOCAL, area_coberta,
       periodo: { inicio: ps[0].data, fim: ps[ps.length - 1].data, passagens: ps.length },
       janela_da_enchente: janela.length ? { inicio: janela[0], fim: janela[janela.length - 1],
-        origem: "catálogo do processamento (fonte da janela ainda em aberto)" } : null,
-      trilhas, classes: CLASSES, cuidados: prov.caveats, vegetacao_alagada: VEGETACAO_ALAGADA,
+        origem: "processing catalogue (source of the window still open)" } : null,
+      trilhas, classes: CLASSES, cuidados: CUIDADOS, vegetacao_alagada: VEGETACAO_ALAGADA,
       granulos: ps.map((p) => ({ n: p.n, data: p.data, trilha: p.trilha, granulo: p.granulo })),
       municipios_fonte: malha ? malha.data.attribution : null,
       origem: ev.local ? "local" : org,
@@ -214,8 +227,7 @@
   async function geojsonMes(mes) {
     const { data, local } = await load(`${R}/export?format=geojson&month=${mes}`, "cheia-seca.geojson");
     const feats = local ? data.features.filter((f) => f.properties.date.startsWith(mes)) : data.features;
-    const cuidados = data.provenance.caveats;
-    return { type: "FeatureCollection", mes, fonte: data.provenance.data_source, aviso: cuidados[cuidados.length - 1],
+    return { type: "FeatureCollection", mes, fonte: data.provenance.data_source, aviso: CUIDADOS[CUIDADOS.length - 1],
       features: feats.map(feicao), origem: origem(data, local) };
   }
 
@@ -227,7 +239,7 @@
   async function municipios(mes) {
     const { data: d, local } = await load(`${R}/municipalities?month=${mes}`, `municipios-${mes}.json`);
     return {
-      mes: d.month, mes_nome: nomeMes(d.month), datas: d.dates, metodo: d.method,
+      mes: d.month, mes_nome: nomeMes(d.month), datas: d.dates, metodo: METODO_MUNICIPIO,
       fora_dos_municipios: { cheia_km2: d.outside_municipalities.flood_km2, seca_km2: d.outside_municipalities.dry_km2 },
       municipios: d.municipalities.map((m) => ({
         id: m.id, nome: m.name, toca_area_coberta: m.touches_coverage, cheia_km2: m.flood_km2, seca_km2: m.dry_km2,
@@ -244,11 +256,11 @@
   const CENTRO = [-29.42, -51.93]; // center da região no backend, usado só se a API nem responder
 
   function frasePrevisao(days) {
-    if (!days.length) return "Sem previsão para os próximos dias.";
+    if (!days.length) return "No forecast for the next days.";
     const total = days.reduce((s, x) => s + (x.rain_mm || 0), 0);
-    if (total < 5) return `Pouca ou nenhuma chuva prevista nos próximos ${days.length} dias.`;
+    if (total < 5) return `Little or no rain forecast for the next ${days.length} days.`;
     const pico = days.reduce((a, x) => ((x.rain_mm || 0) > (a.rain_mm || 0) ? x : a));
-    return `Chuva prevista de ${total.toFixed(1).replace(".", ",")} mm nos próximos ${days.length} dias, mais forte em ${dataBR(pico.date)}.`;
+    return `${total.toFixed(1)} mm of rain forecast for the next ${days.length} days, heaviest on ${dataBR(pico.date)}.`;
   }
 
   async function previsaoDireta(base, dias) {
@@ -271,9 +283,9 @@
     const days = (dl.time || []).map((date, i) => ({ date, rain_mm: col("precipitation_sum")[i] ?? null,
       rain_probability_pct: col("precipitation_probability_max")[i] ?? null,
       tmin_c: col("temperature_2m_min")[i] ?? null, tmax_c: col("temperature_2m_max")[i] ?? null }));
-    if (!days.length) throw new Error("Open-Meteo sem dias");
-    console.warn("[WW.api] A API veio sem previsão; consultando a Open-Meteo direto do navegador.");
-    return { source: "open-meteo", live: true, kind: "Previsão do tempo, não previsão de enchente.", lat, lon,
+    if (!days.length) throw new Error("Open-Meteo returned no days");
+    console.warn("[WW.api] The API returned no forecast; asking Open-Meteo directly from the browser.");
+    return { source: "open-meteo", live: true, kind: "Weather forecast, not a flood forecast.", lat, lon,
       generated_at: new Date().toISOString(), total_rain_mm: r1(days.reduce((s, x) => s + (x.rain_mm || 0), 0)),
       summary: frasePrevisao(days), days, error: null };
   }
@@ -292,12 +304,12 @@
         d = await previsaoDireta(d, dias);
       } catch (e) {
         if (falha) throw falha;
-        throw new ApiError(d.error || "Previsão indisponível agora.", 502);
+        throw new ApiError(d.error || "Forecast unavailable right now.", 502);
       }
     }
     return {
-      fonte: "Open-Meteo (modelos meteorológicos globais)", tipo: d.kind, lat: d.lat, lon: d.lon,
-      gerado_em: d.generated_at, chuva_total_mm: d.total_rain_mm, frase: d.summary,
+      fonte: "Open-Meteo (global weather models)", tipo: "Weather forecast, not a flood forecast.", lat: d.lat, lon: d.lon,
+      gerado_em: d.generated_at, chuva_total_mm: d.total_rain_mm, frase: frasePrevisao(d.days),
       dias: d.days.map((x) => ({ data: x.date, chuva_mm: x.rain_mm, prob_chuva: x.rain_probability_pct, tmin: x.tmin_c, tmax: x.tmax_c })),
       origem: origem(d, false),
     };
@@ -318,7 +330,7 @@
         inside_coverage: sul <= lat && lat <= norte && oeste <= lon && lon <= leste, source: "ibge" };
     });
     items.sort((a, b) => (norm(b.name).startsWith(alvo) - norm(a.name).startsWith(alvo)) || a.name.localeCompare(b.name, "pt-BR"));
-    return { q, items, error: "Sem a API, a busca mostra só os municípios (bairros ficam de fora)." };
+    return { q, items, error: "Without the API, the search shows only municipalities (no neighbourhoods)." };
   }
 
   async function lugares(q) {
@@ -343,7 +355,7 @@
         return { fase: u.phase, oni: u.oni, estacao: `${u.season} ${u.year}`, mes: u.month,
           live: !!d.live, data_snapshot: d.snapshot_date || null, origem: origem(d, false) };
       }, (e) => {
-        console.warn(`[WW.api] ENSO indisponível: ${e.message} O selo fica escondido.`);
+        console.warn(`[WW.api] ENSO unavailable: ${e.message} The badge stays hidden.`);
         return null;
       });
       ensoP.then((v) => { if (!v) ensoP = null; }); // tenta de novo na próxima tela
@@ -355,7 +367,8 @@
   const explicacoes = new Map();
   function explicacao(topico) {
     if (!explicacoes.has(topico)) {
-      const p = request(`/api/explain/${encodeURIComponent(topico)}`).then((d) => ({ titulo: d.title, resumo: d.summary }));
+      const p = EXPLICA[topico] ? Promise.resolve(EXPLICA[topico])
+        : request(`/api/explain/${encodeURIComponent(topico)}`).then((d) => ({ titulo: d.title, resumo: d.summary }));
       explicacoes.set(topico, p);
       p.catch(() => explicacoes.delete(topico));
     }
@@ -432,8 +445,8 @@
     } catch (e) {
       const demo = e.data && e.data.demo_email;
       if (semServidor(e) && demo && email.trim().toLowerCase() === demo.toLowerCase()) {
-        console.warn(`[WW.api] Login sem o servidor (${e.message}). Entrando com a conta de demonstração em modo offline.`);
-        return guardar({ name: "Conta de demonstração", city: null }, true);
+        console.warn(`[WW.api] Login without the server (${e.message}). Entering with the demo account in offline mode.`);
+        return guardar({ name: "Demo account", city: null }, true);
       }
       throw e;
     }
@@ -451,7 +464,7 @@
     if (ss.get(GUEST) === "1" && user()) return (sessao = Promise.resolve(guardar(user(), false, true)));
     sessao = request("/api/auth/me").then((res) => guardar(res.user, false), (e) => {
       if (semServidor(e) && ss.get(OFFLINE) === "1" && user()) {
-        console.warn(`[WW.api] /api/auth/me falhou (${e.message}). Sessão de demonstração offline.`);
+        console.warn(`[WW.api] /api/auth/me failed (${e.message}). Offline demo session.`);
         return guardar(user(), true);
       }
       limpar();
