@@ -53,8 +53,9 @@ NISAR L2 GCOV, the source of the water seen in 2026. A search of NASA's catalogu
 - **Weather forecast:** Open-Meteo, 7 days, read live. Weather only, not a flood forecast.
 - **ENSO:** NOAA CPC Oceanic Niño Index, context only, never shown as the cause of a flood.
 
-- **Basemap:** tiles © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), used under the OpenStreetMap tile usage policy (attribution always visible, no stored or offline tiles).
-- **Roads:** OpenStreetMap main roads (motorway to tertiary) inside the study area, extracted with `pipeline/fetch_roads.py` (OSM data timestamp in `data/roads/osm_roads.geojson`). Road data © OpenStreetMap contributors, available under the [Open Database License (ODbL)](https://www.openstreetmap.org/copyright). The road file is derived from OSM and is under the ODbL, not under the MIT licence of the code.
+- **Maps:** drawn in the browser from the IBGE municipal mesh and the NISAR images; the app uses no OpenStreetMap basemap tiles.
+- **Place search:** neighbourhoods come from OpenStreetMap through Nominatim, © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), under the ODbL; each search result shows its source on screen ("OpenStreetMap (Nominatim)" or "IBGE").
+- **Roads:** OpenStreetMap main roads (motorway to tertiary) inside the study area, extracted with `pipeline/fetch_roads.py` (OSM data timestamp in `data/roads/osm_roads.geojson`). Road data © OpenStreetMap contributors, available under the [Open Database License (ODbL)](https://www.openstreetmap.org/copyright). The road file is derived from OSM and is under the ODbL, not under the MIT licence of the code. It is not shown in the app yet (see "Current gaps").
 - **Localities:** IBGE municipal seats and localities *[to add; product, version and licence to verify]*.
 
 ## How to run
@@ -99,7 +100,7 @@ Tests: `cd backend && pip install -r requirements.txt && python -m pytest` and `
 1. On render.com: **New → Blueprint**, pick this repository. `render.yaml` creates the `water-waltz-api` web
    service; Render generates `JWT_SECRET` and `SEED_GOV_PASSWORD`.
 2. When asked, fill in `DEMO_USER_PASSWORD` (keep it out of the repository) and `CORS_ORIGINS` (the Vercel
-   URL, e.g. `https://water-waltz.vercel.app`).
+   URL, here `https://nasa-space-apps-challenge-two.vercel.app`).
 3. After the deploy, `https://<service>.onrender.com/health` must answer `{"status":"ok"}`. The demo account is
    created again on every startup from `DEMO_USER_*`.
 
